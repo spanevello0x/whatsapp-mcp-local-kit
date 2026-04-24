@@ -20,5 +20,5 @@ Confirme tambem:
 Sugestao de descricao para o GitHub:
 
 ```text
-Windows tray kit and docs for running an unofficial local WhatsApp MCP bridge safely with Codex or Claude Desktop.
+Local tray/menu bar kit and docs for running an unofficial WhatsApp MCP bridge safely with Codex or Claude Desktop on Windows and macOS.
 ```

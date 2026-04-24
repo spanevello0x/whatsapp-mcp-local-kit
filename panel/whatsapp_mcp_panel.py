@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import signal
 import socket
 import sqlite3
 import subprocess
@@ -27,14 +28,22 @@ def load_config() -> dict:
 
 
 CONFIG = load_config()
-BASE_DIR = Path(CONFIG.get("bridge_root", str(DEFAULT_BRIDGE_ROOT)))
+if os.name == "nt":
+    default_bridge_root = DEFAULT_BRIDGE_ROOT
+    bridge_binary = "whatsapp-bridge.exe"
+else:
+    default_bridge_root = Path.home() / "WhatsApp-MCP" / "whatsapp-mcp"
+    bridge_binary = "whatsapp-bridge"
+
+BASE_DIR = Path(CONFIG.get("bridge_root", str(default_bridge_root)))
 WORK_DIR = BASE_DIR / "whatsapp-bridge"
-EXE_PATH = BASE_DIR / "build-tmp" / "whatsapp-bridge.exe"
-EXE_FALLBACK_PATH = WORK_DIR / "whatsapp-bridge.exe"
+EXE_PATH = BASE_DIR / "build-tmp" / bridge_binary
+EXE_FALLBACK_PATH = WORK_DIR / bridge_binary
 LOG_PATH = BASE_DIR / "bridge.log"
 MESSAGES_DB = WORK_DIR / "store" / "messages.db"
 PAUSED_FLAG = BASE_DIR / ".bridge-paused"
 LAST_SYNC_PATH = BASE_DIR / ".bridge-last-sync"
+PID_PATH = BASE_DIR / ".bridge.pid"
 
 SYNC_WINDOW_SECONDS = int(CONFIG.get("sync_window_minutes", 8)) * 60
 RANDOM_SYNC_MIN_SECONDS = int(CONFIG.get("random_sync_min_minutes", 10)) * 60
@@ -56,7 +65,27 @@ def strip_ansi(text: str) -> str:
     return ANSI_RE.sub("", text)
 
 
+def pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
 def bridge_running() -> bool:
+    if os.name != "nt" and PID_PATH.exists():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+            if pid_alive(pid):
+                return True
+        except (OSError, ValueError):
+            pass
+        PID_PATH.unlink(missing_ok=True)
+
+    if os.name != "nt":
+        return bridge_port_open()
+
     result = subprocess.run(
         ["tasklist", "/fi", "imagename eq whatsapp-bridge.exe", "/fo", "csv", "/nh"],
         capture_output=True,
@@ -87,13 +116,19 @@ def start_bridge() -> None:
         return
     PAUSED_FLAG.unlink(missing_ok=True)
     log = open(LOG_PATH, "a", encoding="utf-8", errors="replace")
-    subprocess.Popen(
-        [str(exe)],
-        cwd=str(WORK_DIR),
-        stdout=log,
-        stderr=subprocess.STDOUT,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
+    popen_kwargs = {
+        "cwd": str(WORK_DIR),
+        "stdout": log,
+        "stderr": subprocess.STDOUT,
+    }
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    else:
+        popen_kwargs["start_new_session"] = True
+
+    proc = subprocess.Popen([str(exe)], **popen_kwargs)
+    if os.name != "nt":
+        PID_PATH.write_text(str(proc.pid), encoding="utf-8")
 
 
 def stop_bridge(paused: bool = True) -> None:
@@ -101,13 +136,29 @@ def stop_bridge(paused: bool = True) -> None:
         PAUSED_FLAG.write_text(datetime.now().isoformat(), encoding="utf-8")
     else:
         PAUSED_FLAG.unlink(missing_ok=True)
-    subprocess.run(
-        ["taskkill", "/f", "/im", "whatsapp-bridge.exe"],
-        capture_output=True,
-        text=True,
-        timeout=8,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/f", "/im", "whatsapp-bridge.exe"],
+            capture_output=True,
+            text=True,
+            timeout=8,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        return
+
+    if PID_PATH.exists():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+            os.kill(pid, signal.SIGTERM)
+            for _ in range(20):
+                if not pid_alive(pid):
+                    break
+                time.sleep(0.1)
+            if pid_alive(pid):
+                os.kill(pid, signal.SIGKILL)
+        except (OSError, ValueError, ProcessLookupError):
+            pass
+        PID_PATH.unlink(missing_ok=True)
 
 
 def db_stats() -> dict:

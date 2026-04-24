@@ -1,15 +1,16 @@
 # WhatsApp MCP Local Kit
 
-Kit em portugues para rodar uma bridge local do WhatsApp com MCP, painel de bandeja no Windows e guias para usar com Codex ou Claude Desktop.
+Kit em portugues para rodar uma bridge local do WhatsApp com MCP, painel de bandeja/menu bar e guias para usar com Codex ou Claude Desktop.
 
 Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou credenciais. Ele inclui instalador, painel, scripts e uma copia vendorizada do projeto open-source [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp), distribuida sob MIT com atribuicao preservada.
 
 ## O que este kit entrega
 
 - Guia de preparacao no Windows.
+- Guia de preparacao no macOS.
 - Checklist de antivirus sem liberar PowerShell globalmente.
-- Painel local em Python/Tkinter para bandeja.
-- Atalhos com `pythonw.exe`, sem janela preta.
+- Painel local em Python/Tkinter para bandeja/menu bar.
+- Atalhos/LaunchAgent sem terminal permanente aberto.
 - Modo de sincronizacao em rajadas: manual + janelas aleatorias.
 - Guias para Claude Desktop e Codex.
 - Checklist de seguranca para nao expor conversas.
@@ -18,6 +19,8 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Codigo da bridge incluido no proprio repositorio em `vendor/lharries-whatsapp-mcp`.
 
 ## Instalacao rapida
+
+### Windows
 
 ```powershell
 git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
@@ -43,6 +46,23 @@ Se ainda nao houver sessao autenticada, rode o primeiro login em terminal visive
 powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
 ```
 
+### macOS / MacBook
+
+```bash
+git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
+cd whatsapp-mcp-local-kit
+chmod +x scripts/*.sh
+./scripts/bootstrap-macos.sh --install-missing-dependencies --patch-localhost --configure-all-mcp
+```
+
+Se ainda nao houver sessao autenticada:
+
+```bash
+./scripts/first-login-macos.sh
+```
+
+Veja `docs/10-macos.md`.
+
 ## Fluxo recomendado
 
 1. Leia `docs/00-o-que-e-automatico.md`.
@@ -55,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
 
 ## Para usar com Codex
 
-Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acesso ao seu Windows. O agente deve diagnosticar primeiro, pedir confirmacao antes de mexer em antivirus/quarentena e nunca apagar bancos `.db`.
+Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acesso ao computador. O agente deve diagnosticar primeiro, pedir confirmacao antes de mexer em dependencias/antivirus/quarentena e nunca apagar bancos `.db`.
 
 ## Aviso
 
@@ -64,5 +84,6 @@ Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acess
 Partes da bridge sao vendorizadas de `lharries/whatsapp-mcp` sob MIT. Veja `NOTICE` e `docs/08-vendor-e-licenca.md`.
 
 Para entender o software inteiro, veja `docs/09-arquitetura-e-operacao.md`.
+Para MacBook/macOS, veja `docs/10-macos.md`.
 
 Este kit nao e oficial da Meta/WhatsApp e pode quebrar se o protocolo do WhatsApp Web mudar. Para uso comercial critico, avalie tambem a WhatsApp Business Platform oficial.

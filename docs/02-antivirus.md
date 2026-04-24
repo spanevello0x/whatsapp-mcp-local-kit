@@ -50,3 +50,16 @@ Historico de protecao
 Se aparecer quarentena, restaure apenas arquivos dentro dessas pastas. Se o alerta apontar para outro local, nao restaure.
 
 Se o antivirus reclamar de uma linha de comando, confira o comando inteiro. Linhas que param processos, compilam binarios ou criam atalhos podem parecer suspeitas mesmo quando sao esperadas. Ainda assim, prefira liberar caminho especifico, nao o interpretador inteiro.
+
+## macOS
+
+No macOS, nao desative Gatekeeper, XProtect, Defender for Endpoint, CrowdStrike, SentinelOne ou outro EDR globalmente.
+
+Se precisar liberar excecoes, prefira apenas:
+
+```text
+~/WhatsApp-MCP/whatsapp-mcp
+~/Documents/WhatsApp MCP Panel
+```
+
+Em Mac corporativo, a liberacao pode depender do administrador de TI.
