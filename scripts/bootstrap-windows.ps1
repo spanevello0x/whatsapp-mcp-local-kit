@@ -14,6 +14,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $bridgeParent = Split-Path -Parent $BridgeRoot
+$vendoredBridge = Join-Path $repoRoot "vendor\lharries-whatsapp-mcp"
 
 function Test-Tool {
   param(
@@ -59,9 +60,16 @@ if (-not $requiredOk) {
 }
 
 if (-not (Test-Path $BridgeRoot)) {
+  if (-not (Test-Path $vendoredBridge)) {
+    throw "Codigo da bridge vendorizada nao encontrado: $vendoredBridge"
+  }
   New-Item -ItemType Directory -Path $bridgeParent -Force | Out-Null
-  Write-Host "`nClonando lharries/whatsapp-mcp..."
-  git clone https://github.com/lharries/whatsapp-mcp.git $BridgeRoot
+  New-Item -ItemType Directory -Path $BridgeRoot -Force | Out-Null
+  Write-Host "`nCopiando bridge incluida neste repositorio..."
+  Copy-Item -LiteralPath (Join-Path $vendoredBridge "whatsapp-bridge") -Destination $BridgeRoot -Recurse -Force
+  Copy-Item -LiteralPath (Join-Path $vendoredBridge "whatsapp-mcp-server") -Destination $BridgeRoot -Recurse -Force
+  Copy-Item -LiteralPath (Join-Path $vendoredBridge "LICENSE") -Destination (Join-Path $BridgeRoot "LICENSE.upstream-lharries-whatsapp-mcp") -Force
+  Copy-Item -LiteralPath (Join-Path $vendoredBridge "README-lharries-whatsapp-mcp.md") -Destination (Join-Path $BridgeRoot "README.upstream-lharries-whatsapp-mcp.md") -Force
 } else {
   Write-Host "`nBridge ja existe. Nao vou substituir: $BridgeRoot"
 }

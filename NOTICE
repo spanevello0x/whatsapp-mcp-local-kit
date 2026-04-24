@@ -1,0 +1,20 @@
+WhatsApp MCP Local Kit
+
+This repository contains original installer, tray panel, Windows automation and documentation code for this distribution.
+
+It also vendors substantial portions of the open-source project:
+
+  lharries/whatsapp-mcp
+  https://github.com/lharries/whatsapp-mcp
+
+The vendored upstream code is distributed under the MIT License.
+Original copyright notice:
+
+  Copyright (c) 2025 Luke Harries
+
+The upstream license text is included at:
+
+  vendor/lharries-whatsapp-mcp/LICENSE
+
+Local distribution changes include Windows bootstrap scripts, tray panel integration, local-only binding guidance, antivirus documentation and installer flow.
+

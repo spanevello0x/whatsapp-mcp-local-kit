@@ -2,7 +2,7 @@
 
 Kit em portugues para rodar uma bridge local do WhatsApp com MCP, painel de bandeja no Windows e guias para usar com Codex ou Claude Desktop.
 
-Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou credenciais. Ele e um wrapper/documentacao em cima do projeto open-source [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp).
+Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou credenciais. Ele inclui instalador, painel, scripts e uma copia vendorizada do projeto open-source [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp), distribuida sob MIT com atribuicao preservada.
 
 ## O que este kit entrega
 
@@ -15,6 +15,7 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Checklist de seguranca para nao expor conversas.
 - Instalacao opcional de dependencias via `winget`.
 - Configuracao opcional do MCP no Codex e no Claude Desktop.
+- Codigo da bridge incluido no proprio repositorio em `vendor/lharries-whatsapp-mcp`.
 
 ## Instalacao rapida
 
@@ -58,5 +59,7 @@ Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acess
 ## Aviso
 
 `messages.db` contem conversas reais. Nunca publique `.db`, logs, backups de sessao ou tokens. Este repo ja vem com `.gitignore` agressivo para reduzir risco.
+
+Partes da bridge sao vendorizadas de `lharries/whatsapp-mcp` sob MIT. Veja `NOTICE` e `docs/08-vendor-e-licenca.md`.
 
 Este kit nao e oficial da Meta/WhatsApp e pode quebrar se o protocolo do WhatsApp Web mudar. Para uso comercial critico, avalie tambem a WhatsApp Business Platform oficial.

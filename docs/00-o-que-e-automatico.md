@@ -6,7 +6,7 @@ Este kit tenta deixar a instalacao o mais proxima possivel de copia/cola, mas al
 
 - Verificar se Go, Python, uv, Git e GCC existem.
 - Tentar instalar dependencias faltantes via `winget`, se voce usar `-InstallMissingDependencies`.
-- Clonar `lharries/whatsapp-mcp`, se ainda nao existir.
+- Copiar a bridge incluida em `vendor/lharries-whatsapp-mcp`, se ainda nao existir instalacao local.
 - Compilar a bridge para `build-tmp/whatsapp-bridge.exe`.
 - Instalar o painel em `Documents\WhatsApp MCP Panel`.
 - Criar atalho na area de trabalho.

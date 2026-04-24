@@ -18,7 +18,7 @@ Requisitos usuais:
 - Git
 - GCC/MSYS2 para `github.com/mattn/go-sqlite3`
 
-Clone a bridge upstream:
+Opcao manual: clone a bridge upstream:
 
 ```powershell
 mkdir "$env:USERPROFILE\CLAUDE COWORK\Whatsapp" -Force
@@ -26,7 +26,7 @@ cd "$env:USERPROFILE\CLAUDE COWORK\Whatsapp"
 git clone https://github.com/lharries/whatsapp-mcp.git whatsapp-mcp
 ```
 
-Ou use o bootstrap deste kit:
+Opcao recomendada: use o bootstrap deste kit. Ele copia a bridge vendorizada incluida neste proprio repositorio:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
