@@ -48,6 +48,15 @@ Se o Homebrew nao estiver instalado, instale por https://brew.sh/ e rode novamen
 ~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
 ```
 
+O painel gera icones em:
+
+```text
+~/Documents/WhatsApp MCP Panel/whatsapp-mcp-icon.png
+~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-running.png
+~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-waiting.png
+~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-stopped.png
+```
+
 ## Claude Desktop no macOS
 
 Arquivo:
@@ -85,4 +94,3 @@ Em ambientes corporativos, a liberacao pode depender do admin de TI.
 ```
 
 O verificador checa runtimes, bridge, bancos, binario, painel, LaunchAgent, porta local e estatisticas SQLite.
-

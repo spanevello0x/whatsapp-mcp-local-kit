@@ -15,6 +15,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PANEL_SOURCE="$REPO_ROOT/panel/whatsapp_mcp_panel.py"
+ICON_GENERATOR="$REPO_ROOT/scripts/generate-icons.py"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 PLIST="$LAUNCH_AGENTS/com.whatsapp-mcp.tray.plist"
 DESKTOP_LAUNCHER="$HOME/Desktop/WhatsApp MCP Tray.command"
@@ -44,6 +45,10 @@ PYTHON_BIN="$VENV/bin/python"
 if [[ ! -x "$PYTHON_BIN" ]]; then
   uv venv "$VENV"
   uv pip install --python "$PYTHON_BIN" pystray Pillow "qrcode[pil]" pyobjc-framework-Cocoa
+fi
+
+if [[ -f "$ICON_GENERATOR" ]]; then
+  "$PYTHON_BIN" "$ICON_GENERATOR" --out-dir "$PANEL_DIR"
 fi
 
 cat > "$DESKTOP_LAUNCHER" <<EOF
@@ -85,6 +90,6 @@ launchctl unload "$PLIST" >/dev/null 2>&1 || true
 launchctl load "$PLIST" >/dev/null 2>&1 || true
 
 echo "Painel instalado em: $PANEL_DIR"
+echo "Icones criados em: $PANEL_DIR"
 echo "Launcher criado: $DESKTOP_LAUNCHER"
 echo "LaunchAgent criado: $PLIST"
-

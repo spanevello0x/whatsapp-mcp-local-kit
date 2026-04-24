@@ -60,6 +60,12 @@ RED = "#dc2626"
 YELLOW = "#d97706"
 BLUE = "#2563eb"
 
+STATUS_COLORS = {
+    "running": (22, 163, 74, 255),
+    "waiting": (217, 119, 6, 255),
+    "stopped": (107, 114, 128, 255),
+}
+
 
 def strip_ansi(text: str) -> str:
     return ANSI_RE.sub("", text)
@@ -180,6 +186,35 @@ def read_log(lines: int = 30) -> list[str]:
     return [strip_ansi(line) for line in raw if line.strip()][-lines:]
 
 
+def status_from_state(running: bool, paused: bool) -> tuple[str, str]:
+    if running:
+        return "running", "Rodando"
+    if paused:
+        return "stopped", "Stopado"
+    return "waiting", "Aguardando proximo sync"
+
+
+def make_tray_icon(status: str, size: int = 64):
+    from PIL import Image, ImageDraw
+
+    accent = STATUS_COLORS.get(status, STATUS_COLORS["waiting"])
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    scale = size / 64
+
+    def xy(x1, y1, x2, y2):
+        return tuple(int(v * scale) for v in (x1, y1, x2, y2))
+
+    draw.rounded_rectangle(xy(5, 5, 59, 59), radius=int(15 * scale), fill=(11, 18, 32, 255))
+    draw.ellipse(xy(11, 10, 53, 52), fill=(16, 27, 45, 255), outline=(25, 195, 125, 255), width=max(1, int(3 * scale)))
+    draw.rounded_rectangle(xy(17, 16, 45, 38), radius=int(9 * scale), fill=(25, 195, 125, 255))
+    draw.polygon([(int(23 * scale), int(36 * scale)), (int(18 * scale), int(48 * scale)), (int(31 * scale), int(39 * scale))], fill=(25, 195, 125, 255))
+    draw.rounded_rectangle(xy(22, 23, 40, 28), radius=int(3 * scale), fill=(239, 255, 247, 255))
+    draw.ellipse(xy(38, 38, 60, 60), fill=accent, outline=(220, 234, 254, 255), width=max(1, int(3 * scale)))
+    draw.ellipse(xy(45, 45, 53, 53), fill=(255, 255, 255, 255))
+    return img
+
+
 class App:
     def __init__(self, minimized: bool = False) -> None:
         self.root = tk.Tk()
@@ -190,6 +225,8 @@ class App:
         self.sync_end_at: float | None = None
         self.next_sync_at: float | None = None
         self.tray_icon = None
+        self.tray_status_key = ""
+        self.tray_status_label = "Aguardando proximo sync"
         self._ui()
         self._tray()
         if minimized:
@@ -226,17 +263,27 @@ class App:
     def _tray_worker(self) -> None:
         try:
             import pystray
-            from PIL import Image, ImageDraw
-            img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-            ImageDraw.Draw(img).ellipse((6, 6, 58, 58), fill=(22, 163, 74, 255))
             menu = pystray.Menu(
+                pystray.MenuItem(lambda _item: f"Status: {self.tray_status_label}", None, enabled=False),
                 pystray.MenuItem("Abrir painel", lambda _i, _it: self.root.after(0, self.show), default=True),
                 pystray.MenuItem("Sincronizar agora", lambda _i, _it: self.root.after(0, lambda: self.start_sync(True))),
                 pystray.MenuItem("Pausar", lambda _i, _it: self.root.after(0, self.pause)),
                 pystray.MenuItem("Sair", lambda _i, _it: self.root.after(0, self.quit)),
             )
-            self.tray_icon = pystray.Icon("WhatsApp MCP", img, "WhatsApp MCP", menu)
+            self.tray_icon = pystray.Icon("WhatsApp MCP", make_tray_icon("waiting"), "WhatsApp MCP - Aguardando proximo sync", menu)
             self.tray_icon.run()
+        except Exception:
+            pass
+
+    def update_tray_status(self, key: str, label: str) -> None:
+        self.tray_status_label = label
+        if not self.tray_icon or key == self.tray_status_key:
+            return
+        self.tray_status_key = key
+        try:
+            self.tray_icon.icon = make_tray_icon(key)
+            self.tray_icon.title = f"WhatsApp MCP - {label}"
+            self.tray_icon.update_menu()
         except Exception:
             pass
 
@@ -279,7 +326,9 @@ class App:
     def refresh(self) -> None:
         running = bridge_running()
         port = bridge_port_open()
-        self.status.config(text="Sincronizando" if running else ("Pausado" if PAUSED_FLAG.exists() else "Aguardando"), fg=GREEN if running else YELLOW)
+        status_key, status_label = status_from_state(running, PAUSED_FLAG.exists())
+        self.update_tray_status(status_key, status_label)
+        self.status.config(text=status_label, fg=GREEN if running else (RED if status_key == "stopped" else YELLOW))
         try:
             last_sync = LAST_SYNC_PATH.read_text(encoding="utf-8").strip()
         except OSError:

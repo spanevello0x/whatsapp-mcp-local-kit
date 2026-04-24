@@ -26,6 +26,7 @@ $paths = @(
   (Join-Path $BridgeRoot "build-tmp\whatsapp-bridge.exe"),
   $PanelDir,
   (Join-Path $PanelDir "whatsapp_mcp_panel.py"),
+  (Join-Path $PanelDir "whatsapp-mcp-icon.ico"),
   (Join-Path $PanelDir ".venv\Scripts\pythonw.exe"),
   (Join-Path ([Environment]::GetFolderPath("Desktop")) "WhatsApp MCP Tray.lnk"),
   (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk")

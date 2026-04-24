@@ -53,6 +53,7 @@ AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.
 ```
 
 O atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. Quando minimizado, ele fica na bandeja.
+O icone do Desktop usa `whatsapp-mcp-icon.ico`, gerado durante a instalacao.
 
 No macOS, o instalador cria:
 
@@ -62,6 +63,18 @@ No macOS, o instalador cria:
 ```
 
 O LaunchAgent abre o painel no login. O menu bar substitui a ideia de bandeja do Windows.
+
+## Status visual
+
+O icone da bandeja/menu bar muda de cor:
+
+```text
+Verde   rodando/sincronizando
+Amarelo aguardando proximo sync
+Cinza   stopado/pausado
+```
+
+O tooltip do icone tambem mostra o status atual.
 
 ## Sincronizacao
 

@@ -11,6 +11,7 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Checklist de antivirus sem liberar PowerShell globalmente.
 - Painel local em Python/Tkinter para bandeja/menu bar.
 - Atalhos/LaunchAgent sem terminal permanente aberto.
+- Icone proprio no Desktop e status dinamico na bandeja/menu bar.
 - Modo de sincronizacao em rajadas: manual + janelas aleatorias.
 - Guias para Claude Desktop e Codex.
 - Checklist de seguranca para nao expor conversas.

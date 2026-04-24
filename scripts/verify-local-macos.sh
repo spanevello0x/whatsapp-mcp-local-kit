@@ -25,6 +25,7 @@ paths=(
   "$BRIDGE_ROOT/build-tmp/whatsapp-bridge"
   "$PANEL_DIR"
   "$PANEL_DIR/whatsapp_mcp_panel.py"
+  "$PANEL_DIR/whatsapp-mcp-icon.png"
   "$PANEL_DIR/.venv/bin/python"
   "$HOME/Desktop/WhatsApp MCP Tray.command"
   "$HOME/Library/LaunchAgents/com.whatsapp-mcp.tray.plist"

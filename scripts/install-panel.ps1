@@ -7,11 +7,14 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $panelSource = Join-Path $repoRoot "panel\whatsapp_mcp_panel.py"
+$launcherSource = Join-Path $repoRoot "panel\launch_panel.py"
+$iconGenerator = Join-Path $repoRoot "scripts\generate-icons.py"
 $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
 $desktop = [Environment]::GetFolderPath("Desktop")
 
 New-Item -ItemType Directory -Path $PanelDir -Force | Out-Null
 Copy-Item -LiteralPath $panelSource -Destination (Join-Path $PanelDir "whatsapp_mcp_panel.py") -Force
+Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $PanelDir "launch_panel.py") -Force
 
 $config = @{
   bridge_root = $BridgeRoot
@@ -33,28 +36,54 @@ if (-not (Test-Path $venvPythonw)) {
   & $uv pip install --python $venvPython pystray Pillow "qrcode[pil]"
 }
 
+if (Test-Path $iconGenerator) {
+  & $venvPython $iconGenerator --out-dir $PanelDir
+}
+
 $scriptPath = Join-Path $PanelDir "whatsapp_mcp_panel.py"
+$launcherPath = Join-Path $PanelDir "launch_panel.py"
+$shortcutPythonw = $venvPythonw
+$pyvenvCfg = Join-Path $venv "pyvenv.cfg"
+if (Test-Path $pyvenvCfg) {
+  $homeLine = Get-Content -LiteralPath $pyvenvCfg | Where-Object { $_ -match '^home\s*=' } | Select-Object -First 1
+  if ($homeLine) {
+    $pythonHome = ($homeLine -replace '^home\s*=\s*', '').Trim()
+    $basePythonw = Join-Path $pythonHome "pythonw.exe"
+    if (Test-Path $basePythonw) {
+      $shortcutPythonw = $basePythonw
+    }
+  }
+}
+$iconPath = Join-Path $PanelDir "whatsapp-mcp-icon.ico"
+if (-not (Test-Path $iconPath)) {
+  $iconPath = "$env:SystemRoot\System32\shell32.dll,220"
+}
 $wsh = New-Object -ComObject WScript.Shell
 
-$desktopShortcut = $wsh.CreateShortcut((Join-Path $desktop "WhatsApp MCP Tray.lnk"))
-$desktopShortcut.TargetPath = $venvPythonw
-$desktopShortcut.Arguments = '"' + $scriptPath + '"'
+$desktopShortcutPath = Join-Path $desktop "WhatsApp MCP Tray.lnk"
+if (Test-Path $desktopShortcutPath) { Remove-Item -LiteralPath $desktopShortcutPath -Force }
+$desktopShortcut = $wsh.CreateShortcut($desktopShortcutPath)
+$desktopShortcut.TargetPath = $shortcutPythonw
+$desktopShortcut.Arguments = '"' + $launcherPath + '"'
 $desktopShortcut.WorkingDirectory = $PanelDir
 $desktopShortcut.Description = "WhatsApp MCP local panel"
-$desktopShortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,220"
+$desktopShortcut.IconLocation = $iconPath
 $desktopShortcut.WindowStyle = 7
 $desktopShortcut.Save()
 
 New-Item -ItemType Directory -Path $startup -Force | Out-Null
-$startupShortcut = $wsh.CreateShortcut((Join-Path $startup "WhatsApp MCP Tray.lnk"))
-$startupShortcut.TargetPath = $venvPythonw
-$startupShortcut.Arguments = '"' + $scriptPath + '" --minimized'
+$startupShortcutPath = Join-Path $startup "WhatsApp MCP Tray.lnk"
+if (Test-Path $startupShortcutPath) { Remove-Item -LiteralPath $startupShortcutPath -Force }
+$startupShortcut = $wsh.CreateShortcut($startupShortcutPath)
+$startupShortcut.TargetPath = $shortcutPythonw
+$startupShortcut.Arguments = '"' + $launcherPath + '" --minimized'
 $startupShortcut.WorkingDirectory = $PanelDir
 $startupShortcut.Description = "WhatsApp MCP local panel minimized"
-$startupShortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,220"
+$startupShortcut.IconLocation = $iconPath
 $startupShortcut.WindowStyle = 7
 $startupShortcut.Save()
 
 Write-Host "Painel instalado em: $PanelDir"
+Write-Host "Icone criado: $iconPath"
 Write-Host "Atalho criado: WhatsApp MCP Tray.lnk"
 Write-Host "Auto-start criado: WhatsApp MCP Tray.lnk"
