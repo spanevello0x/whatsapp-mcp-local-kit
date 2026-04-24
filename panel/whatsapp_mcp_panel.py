@@ -23,7 +23,7 @@ DEFAULT_BRIDGE_ROOT = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "C
 
 def load_config() -> dict:
     if CONFIG_PATH.exists():
-        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        return json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
     return {}
 
 
@@ -188,9 +188,9 @@ def read_log(lines: int = 30) -> list[str]:
 
 def status_from_state(running: bool, paused: bool) -> tuple[str, str]:
     if running:
-        return "running", "Rodando"
+        return "running", "Sincronizando agora"
     if paused:
-        return "stopped", "Stopado"
+        return "stopped", "Pausado / stopado"
     return "waiting", "Aguardando proximo sync"
 
 
@@ -245,9 +245,13 @@ class App:
         body.pack(fill=tk.BOTH, expand=True)
         controls = tk.Frame(body, bg=BG)
         controls.pack(fill=tk.X)
-        tk.Button(controls, text="Sincronizar agora", bg=BLUE, fg=TEXT, command=lambda: self.start_sync(True)).pack(side=tk.LEFT, padx=4)
-        tk.Button(controls, text="Pausar", bg=RED, fg=TEXT, command=self.pause).pack(side=tk.LEFT, padx=4)
-        tk.Button(controls, text="Retomar random", bg=GREEN, fg=TEXT, command=self.resume).pack(side=tk.LEFT, padx=4)
+        self.sync_button = tk.Button(controls, text="Sincronizar agora", bg=BLUE, fg=TEXT, command=lambda: self.start_sync(True))
+        self.sync_button.pack(side=tk.LEFT, padx=4)
+        self.pause_button = tk.Button(controls, text="Pausar", bg=RED, fg=TEXT, command=self.pause)
+        self.pause_button.pack(side=tk.LEFT, padx=4)
+        self.resume_button = tk.Button(controls, text="Retomar random", bg=GREEN, fg=TEXT, command=self.resume)
+        self.resume_button.pack(side=tk.LEFT, padx=4)
+        tk.Button(controls, text="Sair", command=self.quit).pack(side=tk.RIGHT, padx=4)
         tk.Button(controls, text="Ocultar", command=self.hide).pack(side=tk.RIGHT, padx=4)
         self.info = tk.Label(body, text="-", bg=BG, fg=TEXT, justify=tk.LEFT, anchor="w")
         self.info.pack(fill=tk.X, pady=12)
@@ -290,11 +294,19 @@ class App:
     def fmt(self, ts: float | None) -> str:
         return "-" if not ts else datetime.fromtimestamp(ts).strftime("%d/%m/%Y %H:%M:%S")
 
+    def remaining(self, ts: float | None) -> str:
+        if not ts:
+            return "-"
+        seconds = max(0, int(ts - time.time()))
+        minutes, seconds = divmod(seconds, 60)
+        return f"{minutes}m {seconds:02d}s"
+
     def start_sync(self, manual: bool) -> None:
         PAUSED_FLAG.unlink(missing_ok=True)
         self.sync_end_at = time.time() + SYNC_WINDOW_SECONDS
         self.next_sync_at = None
         threading.Thread(target=start_bridge, daemon=True).start()
+        self.refresh()
 
     def schedule_next(self) -> None:
         self.next_sync_at = time.time() + random.randint(RANDOM_SYNC_MIN_SECONDS, RANDOM_SYNC_MAX_SECONDS)
@@ -305,7 +317,12 @@ class App:
 
     def resume(self) -> None:
         PAUSED_FLAG.unlink(missing_ok=True)
-        self.schedule_next()
+        if bridge_running():
+            self.sync_end_at = time.time() + SYNC_WINDOW_SECONDS
+            self.next_sync_at = None
+        else:
+            self.schedule_next()
+        self.refresh()
 
     def tick(self) -> None:
         if not PAUSED_FLAG.exists():
@@ -326,9 +343,13 @@ class App:
     def refresh(self) -> None:
         running = bridge_running()
         port = bridge_port_open()
+        paused = PAUSED_FLAG.exists()
         status_key, status_label = status_from_state(running, PAUSED_FLAG.exists())
         self.update_tray_status(status_key, status_label)
         self.status.config(text=status_label, fg=GREEN if running else (RED if status_key == "stopped" else YELLOW))
+        self.sync_button.config(text="Estender sync +8min" if running else "Sincronizar agora")
+        self.pause_button.config(state=tk.DISABLED if paused else tk.NORMAL)
+        self.resume_button.config(state=tk.NORMAL if paused else tk.DISABLED)
         try:
             last_sync = LAST_SYNC_PATH.read_text(encoding="utf-8").strip()
         except OSError:
@@ -338,11 +359,24 @@ class App:
             db_line = f"{stats.get('messages', 0):,} mensagens em {stats.get('chats', 0):,} chats; ultima msg {stats.get('last', '-')}".replace(",", ".")
         except Exception as exc:
             db_line = f"Erro DB: {exc}"
+        if running:
+            sync_line = f"{self.fmt(self.sync_end_at)} (faltam {self.remaining(self.sync_end_at)})"
+            next_line = "sera sorteada quando esta sync terminar"
+            port_line = "aberta (normal durante sincronizacao)"
+        elif paused:
+            sync_line = "pausada"
+            next_line = "random pausado"
+            port_line = "aberta" if port else "fechada"
+        else:
+            sync_line = "nenhuma sync em andamento"
+            next_line = self.fmt(self.next_sync_at)
+            port_line = "aberta" if port else "fechada"
         self.info.config(text=(
-            f"Bridge: {'rodando' if running else 'fechado'} | porta 8080: {'aberta' if port else 'fechada'}\n"
-            f"Sync atual ate: {self.fmt(self.sync_end_at)}\n"
-            f"Ultima sync: {last_sync}\n"
-            f"Proxima sync: {'em andamento' if running else self.fmt(self.next_sync_at)}\n"
+            f"Estado: {status_label}\n"
+            f"Bridge: {'rodando' if running else 'fechada'} | porta 8080: {port_line}\n"
+            f"Sync atual termina: {sync_line}\n"
+            f"Ultima sync concluida: {last_sync}\n"
+            f"Proxima sync: {next_line}\n"
             f"Base: {db_line}"
         ))
         self.log.delete("1.0", tk.END)
