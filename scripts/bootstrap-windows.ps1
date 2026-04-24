@@ -19,7 +19,7 @@ $vendoredBridge = Join-Path $repoRoot "vendor\lharries-whatsapp-mcp"
 function Test-Tool {
   param(
     [string]$Name,
-    [string[]]$Args
+    [string[]]$ToolArgs
   )
 
   $cmd = Get-Command $Name -ErrorAction SilentlyContinue
@@ -29,7 +29,7 @@ function Test-Tool {
   }
 
   Write-Host "[OK] $Name -> $($cmd.Source)"
-  & $cmd.Source @Args
+  & $cmd.Source @ToolArgs
   return $true
 }
 

@@ -32,6 +32,15 @@ if ($PatchLocalhost) {
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
+$msysUcrtBin = "C:\msys64\ucrt64\bin"
+if (Test-Path (Join-Path $msysUcrtBin "gcc.exe")) {
+  $env:Path = "$msysUcrtBin;$env:Path"
+}
+
+if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+  Write-Host "GCC nao encontrado no PATH. Se o build falhar, rode scripts/install-dependencies.ps1 -UseWinget -InstallMsys2." -ForegroundColor Yellow
+}
+
 Push-Location $bridgeDir
 try {
   $env:CGO_ENABLED = "1"

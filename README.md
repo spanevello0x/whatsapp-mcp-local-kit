@@ -51,6 +51,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
 4. Se precisar, rode `scripts/first-login.ps1` e escaneie o QR.
 5. Use o atalho `WhatsApp MCP Tray`.
 6. Configure MCP com `scripts/configure-mcp.ps1` ou `docs/03-mcp-codex-claude.md`.
+7. Valide com `scripts/verify-local.ps1`.
 
 ## Para usar com Codex
 
@@ -61,5 +62,7 @@ Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acess
 `messages.db` contem conversas reais. Nunca publique `.db`, logs, backups de sessao ou tokens. Este repo ja vem com `.gitignore` agressivo para reduzir risco.
 
 Partes da bridge sao vendorizadas de `lharries/whatsapp-mcp` sob MIT. Veja `NOTICE` e `docs/08-vendor-e-licenca.md`.
+
+Para entender o software inteiro, veja `docs/09-arquitetura-e-operacao.md`.
 
 Este kit nao e oficial da Meta/WhatsApp e pode quebrar se o protocolo do WhatsApp Web mudar. Para uso comercial critico, avalie tambem a WhatsApp Business Platform oficial.

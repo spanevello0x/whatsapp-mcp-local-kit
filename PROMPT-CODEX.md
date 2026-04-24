@@ -13,6 +13,7 @@ Objetivo:
 
 Regras obrigatorias:
 - Comece pelo diagnostico. Nao apague, substitua ou mova arquivos antes de mostrar o estado encontrado.
+- Antes de instalar dependencias, criar atalhos, configurar MCP ou rodar build, explique o que sera feito e por que.
 - Se existir whatsapp.db ou messages.db, faca backup antes de qualquer reinstalacao.
 - Nao crie excecao global para powershell.exe, cmd.exe, wscript.exe, python.exe ou go.exe.
 - Para antivirus, apenas me diga exatamente quais pastas/arquivos liberar e espere eu confirmar que fiz.
@@ -32,5 +33,6 @@ Passos esperados:
 8. Se nao existir sessao, rodar scripts/first-login.ps1 em terminal visivel para eu escanear QR.
 9. Confirmar que o atalho WhatsApp MCP Tray abre sem janela preta.
 10. Confirmar que o painel fica na bandeja e registra ultima sincronizacao.
-11. Me entregar um resumo com os caminhos criados, o que ficou no auto-start e como pausar.
+11. Rodar scripts/verify-local.ps1 e explicar o resultado.
+12. Me entregar um resumo com os caminhos criados, o que ficou no auto-start e como pausar.
 ```
