@@ -1,0 +1,19 @@
+*.db
+*.db-shm
+*.db-wal
+store/
+backups/
+bridge.log*
+execucoes.jsonl
+.venv/
+.uv-cache/
+__pycache__/
+*.pyc
+build/
+build-tmp/
+WhatsApp MCP Panel/
+secrets/
+auth.json
+*.token
+.DS_Store
+Thumbs.db
