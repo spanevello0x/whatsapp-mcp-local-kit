@@ -26,6 +26,12 @@ cd "$env:USERPROFILE\CLAUDE COWORK\Whatsapp"
 git clone https://github.com/lharries/whatsapp-mcp.git whatsapp-mcp
 ```
 
+Ou use o bootstrap deste kit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
+```
+
 Caminho padrao usado pelos scripts:
 
 ```text
@@ -35,8 +41,7 @@ C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp
 Primeiro login:
 
 ```powershell
-cd "$env:USERPROFILE\CLAUDE COWORK\Whatsapp\whatsapp-mcp\whatsapp-bridge"
-go run main.go
+powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
 ```
 
 Escaneie o QR pelo WhatsApp do celular em `Dispositivos conectados`.

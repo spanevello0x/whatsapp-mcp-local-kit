@@ -26,10 +26,9 @@ Passos esperados:
 2. Verificar Go, Python, uv, Git e GCC/MSYS2.
 3. Verificar se lharries/whatsapp-mcp ja existe.
 4. Preservar store/whatsapp.db e store/messages.db.
-5. Compilar a bridge em build-tmp/whatsapp-bridge.exe.
-6. Instalar o painel com scripts/install-panel.ps1.
+5. Rodar scripts/bootstrap-windows.ps1 -PatchLocalhost quando for seguro.
+6. Se nao existir sessao, rodar scripts/first-login.ps1 em terminal visivel para eu escanear QR.
 7. Confirmar que o atalho WhatsApp MCP Tray abre sem janela preta.
 8. Confirmar que o painel fica na bandeja e registra ultima sincronizacao.
 9. Me entregar um resumo com os caminhos criados, o que ficou no auto-start e como pausar.
 ```
-
