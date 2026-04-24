@@ -1,5 +1,18 @@
 # 03 - Codex e Claude Desktop
 
+Configuracao automatica opcional:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -All
+```
+
+Ou escolha apenas um:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -Codex
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -Claude
+```
+
 ## Claude Desktop
 
 Arquivo:

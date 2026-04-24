@@ -26,9 +26,11 @@ Passos esperados:
 2. Verificar Go, Python, uv, Git e GCC/MSYS2.
 3. Verificar se lharries/whatsapp-mcp ja existe.
 4. Preservar store/whatsapp.db e store/messages.db.
-5. Rodar scripts/bootstrap-windows.ps1 -PatchLocalhost quando for seguro.
-6. Se nao existir sessao, rodar scripts/first-login.ps1 em terminal visivel para eu escanear QR.
-7. Confirmar que o atalho WhatsApp MCP Tray abre sem janela preta.
-8. Confirmar que o painel fica na bandeja e registra ultima sincronizacao.
-9. Me entregar um resumo com os caminhos criados, o que ficou no auto-start e como pausar.
+5. Se faltarem dependencias, explicar e pedir confirmacao antes de usar -InstallMissingDependencies.
+6. Rodar scripts/bootstrap-windows.ps1 -PatchLocalhost quando for seguro.
+7. Se eu pedir MCP automatico, usar scripts/configure-mcp.ps1 -Codex, -Claude ou -All.
+8. Se nao existir sessao, rodar scripts/first-login.ps1 em terminal visivel para eu escanear QR.
+9. Confirmar que o atalho WhatsApp MCP Tray abre sem janela preta.
+10. Confirmar que o painel fica na bandeja e registra ultima sincronizacao.
+11. Me entregar um resumo com os caminhos criados, o que ficou no auto-start e como pausar.
 ```

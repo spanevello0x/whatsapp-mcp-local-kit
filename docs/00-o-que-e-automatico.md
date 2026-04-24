@@ -5,11 +5,13 @@ Este kit tenta deixar a instalacao o mais proxima possivel de copia/cola, mas al
 ## O que o bootstrap pode fazer
 
 - Verificar se Go, Python, uv, Git e GCC existem.
+- Tentar instalar dependencias faltantes via `winget`, se voce usar `-InstallMissingDependencies`.
 - Clonar `lharries/whatsapp-mcp`, se ainda nao existir.
 - Compilar a bridge para `build-tmp/whatsapp-bridge.exe`.
 - Instalar o painel em `Documents\WhatsApp MCP Panel`.
 - Criar atalho na area de trabalho.
 - Criar auto-start para abrir o painel minimizado na bandeja.
+- Registrar o MCP no Codex e/ou Claude Desktop, se voce usar `-ConfigureCodexMcp`, `-ConfigureClaudeMcp` ou `-ConfigureAllMcp`.
 
 ## O que nao pode vir pronto no GitHub
 
@@ -32,4 +34,3 @@ Depois do bootstrap e do primeiro login:
 - A bridge sincroniza em rajadas ou sob demanda.
 - A base local fica no proprio PC.
 - Codex/Claude Desktop podem consultar a base via MCP depois de configurados.
-

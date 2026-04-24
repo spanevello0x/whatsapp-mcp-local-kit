@@ -32,6 +32,12 @@ Ou use o bootstrap deste kit:
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
 ```
 
+Para tentar instalar dependencias faltantes com `winget`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -InstallMissingDependencies -PatchLocalhost
+```
+
 Caminho padrao usado pelos scripts:
 
 ```text

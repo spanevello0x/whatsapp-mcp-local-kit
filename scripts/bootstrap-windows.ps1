@@ -1,7 +1,11 @@
 param(
   [string]$BridgeRoot = "$env:USERPROFILE\CLAUDE COWORK\Whatsapp\whatsapp-mcp",
   [string]$PanelDir = "$env:USERPROFILE\Documents\WhatsApp MCP Panel",
+  [switch]$InstallMissingDependencies,
   [switch]$PatchLocalhost,
+  [switch]$ConfigureCodexMcp,
+  [switch]$ConfigureClaudeMcp,
+  [switch]$ConfigureAllMcp,
   [switch]$SkipBuild,
   [switch]$SkipPanel
 )
@@ -31,6 +35,11 @@ function Test-Tool {
 Write-Host "== WhatsApp MCP Local Kit bootstrap ==" -ForegroundColor Cyan
 Write-Host "BridgeRoot: $BridgeRoot"
 Write-Host "PanelDir:   $PanelDir"
+
+if ($InstallMissingDependencies) {
+  Write-Host "`nInstalando dependencias faltantes via winget quando possivel..."
+  powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\install-dependencies.ps1") -UseWinget -InstallMsys2
+}
 
 $requiredOk = $true
 $requiredOk = (Test-Tool "git" @("--version")) -and $requiredOk
@@ -69,6 +78,19 @@ if (-not $SkipPanel) {
   powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\install-panel.ps1") -BridgeRoot $BridgeRoot -PanelDir $PanelDir
 }
 
+if ($ConfigureAllMcp -or $ConfigureCodexMcp -or $ConfigureClaudeMcp) {
+  $mcpScript = Join-Path $repoRoot "scripts\configure-mcp.ps1"
+  $mcpArgs = @("-ExecutionPolicy", "Bypass", "-File", $mcpScript, "-BridgeRoot", $BridgeRoot)
+  if ($ConfigureAllMcp) {
+    $mcpArgs += "-All"
+  } else {
+    if ($ConfigureCodexMcp) { $mcpArgs += "-Codex" }
+    if ($ConfigureClaudeMcp) { $mcpArgs += "-Claude" }
+  }
+  Write-Host "`nConfigurando MCP..."
+  powershell @mcpArgs
+}
+
 $sessionDb = Join-Path $BridgeRoot "whatsapp-bridge\store\whatsapp.db"
 Write-Host "`n== Proximos passos ==" -ForegroundColor Cyan
 if (-not (Test-Path $sessionDb)) {
@@ -79,5 +101,4 @@ if (-not (Test-Path $sessionDb)) {
   Write-Host "Sessao local encontrada: $sessionDb"
 }
 Write-Host "Abra o atalho 'WhatsApp MCP Tray' na area de trabalho."
-Write-Host "Para MCP, veja docs/03-mcp-codex-claude.md"
-
+Write-Host "Para MCP, veja docs/03-mcp-codex-claude.md ou rode scripts/configure-mcp.ps1"

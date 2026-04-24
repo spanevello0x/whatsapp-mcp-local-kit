@@ -13,13 +13,27 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Modo de sincronizacao em rajadas: manual + janelas aleatorias.
 - Guias para Claude Desktop e Codex.
 - Checklist de seguranca para nao expor conversas.
+- Instalacao opcional de dependencias via `winget`.
+- Configuracao opcional do MCP no Codex e no Claude Desktop.
 
-## Instalação rápida
+## Instalacao rapida
 
 ```powershell
 git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
 cd whatsapp-mcp-local-kit
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
+```
+
+Para tentar instalar dependencias faltantes automaticamente via `winget`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -InstallMissingDependencies -PatchLocalhost
+```
+
+Para tambem registrar o MCP no Codex e no Claude Desktop:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost -ConfigureAllMcp
 ```
 
 Se ainda nao houver sessao autenticada, rode o primeiro login em terminal visivel para escanear o QR:
@@ -35,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
 3. Rode `scripts/bootstrap-windows.ps1`.
 4. Se precisar, rode `scripts/first-login.ps1` e escaneie o QR.
 5. Use o atalho `WhatsApp MCP Tray`.
-6. Configure MCP com `docs/03-mcp-codex-claude.md`.
+6. Configure MCP com `scripts/configure-mcp.ps1` ou `docs/03-mcp-codex-claude.md`.
 
 ## Para usar com Codex
 
