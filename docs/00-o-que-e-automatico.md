@@ -2,6 +2,8 @@
 
 Este kit tenta deixar a instalacao o mais proxima possivel de copia/cola, mas algumas partes dependem do computador e da conta de WhatsApp da pessoa.
 
+O escopo estavel esta em `docs/11-escopo-estavel.md`. Ideias maiores, como perfis de vendedores, exportacao automatica de CRM, download em lote e transcricao de audios, ficam fora do fluxo principal por enquanto.
+
 ## O que o bootstrap pode fazer
 
 - Verificar se Go, Python, uv, Git e GCC existem.

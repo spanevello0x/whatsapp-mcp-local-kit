@@ -4,6 +4,8 @@ Kit em portugues para rodar uma bridge local do WhatsApp com MCP, painel de band
 
 Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou credenciais. Ele inclui instalador, painel, scripts e uma copia vendorizada do projeto open-source [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp), distribuida sob MIT com atribuicao preservada.
 
+Escopo estavel atual: instalar, sincronizar em rajadas, pesquisar a base local via MCP e inventariar arquivos/links registrados. Veja `docs/11-escopo-estavel.md`.
+
 ## O que este kit entrega
 
 - Guia de preparacao no Windows.
@@ -68,12 +70,13 @@ Veja `docs/10-macos.md`.
 ## Fluxo recomendado
 
 1. Leia `docs/00-o-que-e-automatico.md`.
-2. Configure excecoes pontuais em `docs/02-antivirus.md`.
-3. Rode `scripts/bootstrap-windows.ps1`.
-4. Se precisar, rode `scripts/first-login.ps1` e escaneie o QR.
-5. Use o atalho `WhatsApp MCP Tray`.
-6. Configure MCP com `scripts/configure-mcp.ps1` ou `docs/03-mcp-codex-claude.md`.
-7. Valide com `scripts/verify-local.ps1`.
+2. Confira o escopo atual em `docs/11-escopo-estavel.md`.
+3. Configure excecoes pontuais em `docs/02-antivirus.md`.
+4. Rode `scripts/bootstrap-windows.ps1`.
+5. Se precisar, rode `scripts/first-login.ps1` e escaneie o QR.
+6. Use o atalho `WhatsApp MCP Tray`.
+7. Configure MCP com `scripts/configure-mcp.ps1` ou `docs/03-mcp-codex-claude.md`.
+8. Valide com `scripts/verify-local.ps1`.
 
 ## Para usar com Codex
 
