@@ -13,7 +13,7 @@ if (-not $profile) {
   throw "Perfil nao encontrado: $Slug"
 }
 
-$paths = Ensure-ProfileDirs $ProfilesDir $profile.slug
+$paths = Ensure-ProfileDirs -ProfilesDir $ProfilesDir -Slug $profile.slug -Config $config -Profile $profile
 if (-not $BridgeBinary) {
   $BridgeBinary = Get-ProfilesBridgeBinary $ProfilesDir
 }

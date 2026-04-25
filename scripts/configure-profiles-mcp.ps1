@@ -34,6 +34,8 @@ if (-not (Test-Path $serverDir)) {
 }
 
 New-Item -ItemType Directory -Path $ProfilesDir -Force | Out-Null
+$uvCacheDir = Join-Path $serverDir ".uv-cache"
+New-Item -ItemType Directory -Path $uvCacheDir -Force | Out-Null
 $profilesConfig = Join-Path $ProfilesDir "profiles.json"
 if (-not (Test-Path $profilesConfig)) {
   @{
@@ -41,6 +43,7 @@ if (-not (Test-Path $profilesConfig)) {
     profiles_dir = $ProfilesDir
     next_port = 8101
     profiles = @()
+    projects = @()
   } | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $profilesConfig -Encoding UTF8
 }
 
@@ -54,7 +57,7 @@ if ($Codex) {
     Write-Host "codex mcp add whatsapp-profiles -- `"$uv`" --directory `"$serverDir`" run main.py"
   } else {
     Write-Host "Configurando MCP whatsapp-profiles no Codex..."
-    & $codexCmd.Source mcp add whatsapp-profiles -- $uv @mcpArgs
+    & $codexCmd.Source mcp add whatsapp-profiles --env "WHATSAPP_MCP_PROFILES_CONFIG=$profilesConfig" --env "UV_CACHE_DIR=$uvCacheDir" -- $uv @mcpArgs
     & $codexCmd.Source mcp list
   }
 }
@@ -92,6 +95,7 @@ if ($Claude) {
     args = $mcpArgs
     env = @{
       WHATSAPP_MCP_PROFILES_CONFIG = $profilesConfig
+      UV_CACHE_DIR = $uvCacheDir
     }
   }
 

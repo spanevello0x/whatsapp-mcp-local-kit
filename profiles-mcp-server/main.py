@@ -27,6 +27,11 @@ def load_config() -> dict[str, Any]:
     if not raw.strip():
         return {"version": 1, "profiles_dir": str(CONFIG_PATH.parent), "profiles": []}
     config = json.loads(raw)
+    redirected = Path(str(config.get("profiles_config", ""))) if config.get("profiles_config") else None
+    if redirected and redirected != CONFIG_PATH and redirected.exists():
+        raw = redirected.read_text(encoding="utf-8-sig")
+        if raw.strip():
+            config = json.loads(raw)
     config.setdefault("version", 1)
     config.setdefault("profiles_dir", str(CONFIG_PATH.parent))
     config.setdefault("profiles", [])
@@ -41,8 +46,21 @@ def profile_by_slug(slug: str) -> dict[str, Any]:
 
 
 def profile_paths(profile: dict[str, Any]) -> dict[str, str]:
-    base_dir = Path(load_config().get("profiles_dir") or CONFIG_PATH.parent)
-    profile_dir = base_dir / "profiles" / profile["slug"]
+    config = load_config()
+    base_dir = Path(config.get("profiles_dir") or CONFIG_PATH.parent)
+    if profile.get("profile_dir"):
+        profile_dir = Path(str(profile["profile_dir"]))
+    else:
+        project_folder = profile.get("project_folder")
+        if not project_folder:
+            project_slug = profile.get("project_slug")
+            for project in config.get("projects", []):
+                if project.get("slug") == project_slug:
+                    project_folder = project.get("folder_name") or project.get("project_folder") or project.get("slug")
+                    break
+        if not project_folder:
+            project_folder = profile.get("project_slug") or re.sub(r"[^a-z0-9]+", "-", str(profile.get("project") or "Geral").lower()).strip("-") or "geral"
+        profile_dir = base_dir / "projetos" / str(project_folder) / profile["slug"]
     bridge_dir = profile_dir / "whatsapp-bridge"
     store_dir = bridge_dir / "store"
     return {
@@ -91,16 +109,19 @@ def db_stats(messages_db: str) -> dict[str, Any]:
     path = Path(messages_db)
     if not path.exists():
         return {"exists": False, "messages": 0, "chats": 0, "first": None, "last": None}
-    with sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=1) as conn:
-        cur = conn.cursor()
-        first, last = cur.execute("select min(timestamp), max(timestamp) from messages").fetchone()
-        return {
-            "exists": True,
-            "messages": cur.execute("select count(*) from messages").fetchone()[0],
-            "chats": cur.execute("select count(*) from chats").fetchone()[0],
-            "first": first,
-            "last": last,
-        }
+    try:
+        with sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=1) as conn:
+            cur = conn.cursor()
+            first, last = cur.execute("select min(timestamp), max(timestamp) from messages").fetchone()
+            return {
+                "exists": True,
+                "messages": cur.execute("select count(*) from messages").fetchone()[0],
+                "chats": cur.execute("select count(*) from chats").fetchone()[0],
+                "first": first,
+                "last": last,
+            }
+    except sqlite3.Error as exc:
+        return {"exists": True, "messages": 0, "chats": 0, "first": None, "last": None, "error": str(exc)}
 
 
 def profile_summary(profile: dict[str, Any]) -> dict[str, Any]:
@@ -159,20 +180,23 @@ def run_message_search(profile: dict[str, Any], query: Optional[str], phone_numb
     where_sql = ("where " + " and ".join(where)) if where else ""
     params.extend([limit, page * limit])
 
-    with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=1) as conn:
-        cur = conn.cursor()
-        rows = cur.execute(
-            f"""
-            select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.content,
-                   m.is_from_me, m.media_type, m.filename, m.file_length
-            from messages m
-            join chats c on m.chat_jid = c.jid
-            {where_sql}
-            order by m.timestamp desc
-            limit ? offset ?
-            """,
-            tuple(params),
-        ).fetchall()
+    try:
+        with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=1) as conn:
+            cur = conn.cursor()
+            rows = cur.execute(
+                f"""
+                select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.content,
+                       m.is_from_me, m.media_type, m.filename, m.file_length
+                from messages m
+                join chats c on m.chat_jid = c.jid
+                {where_sql}
+                order by m.timestamp desc
+                limit ? offset ?
+                """,
+                tuple(params),
+            ).fetchall()
+    except sqlite3.Error as exc:
+        return {"profile": profile_summary(profile), "items": [], "error": str(exc)}
 
     return {
         "profile": profile_summary(profile),
@@ -230,71 +254,74 @@ def run_asset_search(profile: dict[str, Any], query: Optional[str], phone_number
     add_filters(where, params, query, phone_number, chat_jid, after, before)
     base_where = ("where " + " and ".join(where)) if where else ""
 
-    with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=1) as conn:
-        cur = conn.cursor()
-        media_where = (base_where + " and coalesce(m.media_type, '') <> ''") if base_where else "where coalesce(m.media_type, '') <> ''"
-        media_rows = cur.execute(
-            f"""
-            select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.media_type,
-                   m.filename, m.content, m.file_length
-            from messages m
-            join chats c on m.chat_jid = c.jid
-            {media_where}
-            order by m.timestamp desc
-            """,
-            tuple(params),
-        ).fetchall()
+    try:
+        with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=1) as conn:
+            cur = conn.cursor()
+            media_where = (base_where + " and coalesce(m.media_type, '') <> ''") if base_where else "where coalesce(m.media_type, '') <> ''"
+            media_rows = cur.execute(
+                f"""
+                select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.media_type,
+                       m.filename, m.content, m.file_length
+                from messages m
+                join chats c on m.chat_jid = c.jid
+                {media_where}
+                order by m.timestamp desc
+                """,
+                tuple(params),
+            ).fetchall()
 
-        for row in media_rows:
-            category = media_category(row[5], row[6])
-            counts[category] += 1
-            if len(categories[category]) >= limit_per_category:
+            link_where = (base_where + " and m.content like '%http%'") if base_where else "where m.content like '%http%'"
+            link_rows = cur.execute(
+                f"""
+                select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.content
+                from messages m
+                join chats c on m.chat_jid = c.jid
+                {link_where}
+                order by m.timestamp desc
+                """,
+                tuple(params),
+            ).fetchall()
+    except sqlite3.Error as exc:
+        return {"profile": profile_summary(profile), "counts": counts, "items": categories, "error": str(exc)}
+
+    for row in media_rows:
+        category = media_category(row[5], row[6])
+        counts[category] += 1
+        if len(categories[category]) >= limit_per_category:
+            continue
+        path = local_media_path(paths, row[3], row[6])
+        categories[category].append(
+            {
+                "timestamp": row[0],
+                "sender": row[1],
+                "chat_name": row[2],
+                "chat_jid": row[3],
+                "message_id": row[4],
+                "media_type": row[5],
+                "filename": row[6],
+                "caption": row[7],
+                "file_length": row[8],
+                "downloaded": bool(path and Path(path).exists()),
+                "local_path": path if path and Path(path).exists() else None,
+            }
+        )
+
+    for row in link_rows:
+        for link in LINK_RE.findall(row[5] or ""):
+            counts["links"] += 1
+            if len(categories["links"]) >= limit_per_category:
                 continue
-            path = local_media_path(paths, row[3], row[6])
-            categories[category].append(
+            categories["links"].append(
                 {
                     "timestamp": row[0],
                     "sender": row[1],
                     "chat_name": row[2],
                     "chat_jid": row[3],
                     "message_id": row[4],
-                    "media_type": row[5],
-                    "filename": row[6],
-                    "caption": row[7],
-                    "file_length": row[8],
-                    "downloaded": bool(path and Path(path).exists()),
-                    "local_path": path if path and Path(path).exists() else None,
+                    "url": link.rstrip(".,);]"),
+                    "message_excerpt": (row[5] or "")[:500],
                 }
             )
-
-        link_where = (base_where + " and m.content like '%http%'") if base_where else "where m.content like '%http%'"
-        link_rows = cur.execute(
-            f"""
-            select m.timestamp, m.sender, c.name, m.chat_jid, m.id, m.content
-            from messages m
-            join chats c on m.chat_jid = c.jid
-            {link_where}
-            order by m.timestamp desc
-            """,
-            tuple(params),
-        ).fetchall()
-
-        for row in link_rows:
-            for link in LINK_RE.findall(row[5] or ""):
-                counts["links"] += 1
-                if len(categories["links"]) >= limit_per_category:
-                    continue
-                categories["links"].append(
-                    {
-                        "timestamp": row[0],
-                        "sender": row[1],
-                        "chat_name": row[2],
-                        "chat_jid": row[3],
-                        "message_id": row[4],
-                        "url": link.rstrip(".,);]"),
-                        "message_excerpt": (row[5] or "")[:500],
-                    }
-                )
 
     return {"profile": profile_summary(profile), "counts": counts, "items": categories}
 

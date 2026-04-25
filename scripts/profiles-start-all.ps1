@@ -24,7 +24,7 @@ foreach ($profile in @($config.profiles | Sort-Object port)) {
     continue
   }
 
-  $paths = Ensure-ProfileDirs $ProfilesDir $profile.slug
+  $paths = Ensure-ProfileDirs -ProfilesDir $ProfilesDir -Slug $profile.slug -Config $config -Profile $profile
   $sessionDb = Join-Path $paths.StoreDir "whatsapp.db"
   if (-not $IncludeUnauthenticated -and -not (Test-Path $sessionDb)) {
     $skipped += "$($profile.slug): sem sessao; rode profiles-login.ps1"
@@ -36,12 +36,16 @@ foreach ($profile in @($config.profiles | Sort-Object port)) {
     continue
   }
 
-  $outLog = Join-Path $paths.ProfileDir "bridge.out.log"
-  $errLog = Join-Path $paths.ProfileDir "bridge.err.log"
+  $psi = [System.Diagnostics.ProcessStartInfo]::new()
+  $psi.FileName = $BridgeBinary
+  $psi.WorkingDirectory = $paths.BridgeDir
+  $psi.UseShellExecute = $false
+  $psi.CreateNoWindow = $true
+
   $oldPort = $env:WHATSAPP_MCP_PORT
   $env:WHATSAPP_MCP_PORT = [string]$profile.port
   try {
-    $proc = Start-Process -FilePath $BridgeBinary -WorkingDirectory $paths.BridgeDir -WindowStyle Hidden -RedirectStandardOutput $outLog -RedirectStandardError $errLog -PassThru
+    $proc = [System.Diagnostics.Process]::Start($psi)
     $proc.Id | Set-Content -LiteralPath $paths.PidPath -Encoding ASCII
     $started += "$($profile.slug): pid $($proc.Id), porta $($profile.port)"
   }

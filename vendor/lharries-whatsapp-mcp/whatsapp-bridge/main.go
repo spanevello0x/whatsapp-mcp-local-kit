@@ -919,6 +919,10 @@ func main() {
 
 	fmt.Println("\n✓ Connected to WhatsApp! Type 'help' for commands.")
 
+	if client.Store.ID != nil {
+		fmt.Printf("SELF_JID:%s\n", client.Store.ID.String())
+	}
+
 	// Start REST API server
 	startRESTServer(client, messageStore, getEnvInt("WHATSAPP_MCP_PORT", 8080))
 

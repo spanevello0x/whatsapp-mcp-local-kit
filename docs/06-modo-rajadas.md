@@ -1,21 +1,52 @@
-# 06 - Modo rajadas
+# 06 - Modo Rajadas E Sync Inteligente
 
-O modo rajadas abre a bridge por uma janela curta, sincroniza mensagens novas no `messages.db` e fecha de novo.
+O painel usa dois tipos de sincronizacao:
 
-Quando a porta esta fechada, Codex e Claude ainda conseguem pesquisar a base local via MCP. A porta so precisa abrir para atualizar mensagens novas, enviar mensagens ou baixar midias pelo WhatsApp.
+- **primeira sync inteligente** para um perfil recem autenticado;
+- **rajadas random** depois que a base inicial estabiliza.
 
-Padrao do painel:
+Quando a porta esta fechada, Codex e Claude ainda conseguem pesquisar a base local via MCP. A porta so precisa abrir para atualizar mensagens novas, enviar mensagens em uma feature futura ou baixar midias pelo WhatsApp.
+
+## Primeira Sync Inteligente
+
+Nao existe um evento confiavel de "WhatsApp terminou de sincronizar".
+
+Por isso, o painel combina:
+
+- tempo minimo de sync;
+- horario da ultima mensagem sincronizada;
+- velocidade de crescimento da base;
+- tempo em estado estavel;
+- limite maximo.
+
+Padrao:
 
 ```text
-Tempo minimo aberta: 5 minutos
-Fecha por inatividade: 3 minutos sem mudanca no messages.db
-Timeout maximo: 25 minutos
-Intervalo random: entre 10 e 50 minutos
+minimo aberta: 60 minutos
+ultima mensagem perto do agora: ate 45 minutos de atraso
+ritmo baixo: ate 20 mensagens/minuto
+tempo estavel: 30 minutos
+limite maximo: 24 horas
 ```
 
-Nao existe um evento confiavel de "WhatsApp terminou de sincronizar". Por isso, o painel considera a sync concluida quando a base local fica alguns minutos sem novas alteracoes, respeitando um tempo minimo e um timeout maximo. Isso reduz o tempo em que a porta local fica aberta e tambem reduz a chance de antivirus reclamar de um processo sempre ativo.
+Isso evita fechar cedo em importacao pesada, mas tambem evita deixar a porta aberta 24h quando a base claramente chegou perto do presente.
 
-Edite:
+## Rajadas Random
+
+Depois da primeira sync:
+
+```text
+tempo minimo aberta: 5 minutos
+fecha por inatividade: 3 minutos sem crescimento da base
+timeout maximo: 25 minutos
+intervalo random: entre 10 e 50 minutos
+```
+
+O botao **Sync agora** abre uma janela sob demanda para o perfil selecionado.
+
+## Configuracao
+
+Arquivo:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\panel_config.json
@@ -25,14 +56,19 @@ Exemplo:
 
 ```json
 {
-  "bridge_root": "C:\\Users\\SEU_USUARIO\\CLAUDE COWORK\\Whatsapp\\whatsapp-mcp",
+  "profiles_mode": true,
+  "profiles_dir": "C:\\Users\\SEU_USUARIO\\Documents\\WhatsApp MCP Profiles",
+  "initial_sync_hours": 24,
+  "initial_sync_min_minutes": 60,
+  "initial_sync_live_lag_minutes": 45,
+  "initial_sync_live_rate_per_minute": 20,
+  "initial_sync_stable_minutes": 30,
   "sync_min_minutes": 5,
   "sync_idle_minutes": 3,
   "sync_max_minutes": 25,
-  "sync_extend_minutes": 10,
   "random_sync_min_minutes": 10,
   "random_sync_max_minutes": 50
 }
 ```
 
-Use o botao `Sincronizar agora` quando quiser atualizar sob demanda. Se uma sync ja estiver ativa, o botao estende a janela atual e mostra a acao no painel.
+Normalmente nao precisa editar manualmente. Use o painel.

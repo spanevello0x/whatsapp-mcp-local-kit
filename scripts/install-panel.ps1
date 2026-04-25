@@ -1,12 +1,16 @@
 param(
   [string]$BridgeRoot = "$env:USERPROFILE\CLAUDE COWORK\Whatsapp\whatsapp-mcp",
-  [string]$PanelDir = "$env:USERPROFILE\Documents\WhatsApp MCP Panel"
+  [string]$PanelDir = "$env:USERPROFILE\Documents\WhatsApp MCP Panel",
+  [switch]$ProfilesMode,
+  [string]$ProfilesDir = "$env:USERPROFILE\Documents\WhatsApp MCP Profiles"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $panelSource = Join-Path $repoRoot "panel\whatsapp_mcp_panel.py"
+$profilesPanelSource = Join-Path $repoRoot "panel\whatsapp_profiles_panel.py"
+$trayAgentSource = Join-Path $repoRoot "panel\tray_agent.py"
 $launcherSource = Join-Path $repoRoot "panel\launch_panel.py"
 $legacyBatchSource = Join-Path $repoRoot "panel\ABRIR_WHATSAPP_MCP.bat"
 $iconGenerator = Join-Path $repoRoot "scripts\generate-icons.py"
@@ -15,6 +19,12 @@ $desktop = [Environment]::GetFolderPath("Desktop")
 
 New-Item -ItemType Directory -Path $PanelDir -Force | Out-Null
 Copy-Item -LiteralPath $panelSource -Destination (Join-Path $PanelDir "whatsapp_mcp_panel.py") -Force
+if (Test-Path $profilesPanelSource) {
+  Copy-Item -LiteralPath $profilesPanelSource -Destination (Join-Path $PanelDir "whatsapp_profiles_panel.py") -Force
+}
+if (Test-Path $trayAgentSource) {
+  Copy-Item -LiteralPath $trayAgentSource -Destination (Join-Path $PanelDir "tray_agent.py") -Force
+}
 Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $PanelDir "launch_panel.py") -Force
 if (Test-Path $legacyBatchSource) {
   try {
@@ -24,7 +34,7 @@ if (Test-Path $legacyBatchSource) {
   }
 }
 
-$config = @{
+$configMap = [ordered]@{
   bridge_root = $BridgeRoot
   sync_min_minutes = 5
   sync_idle_minutes = 3
@@ -32,19 +42,52 @@ $config = @{
   sync_extend_minutes = 10
   random_sync_min_minutes = 10
   random_sync_max_minutes = 50
-} | ConvertTo-Json -Depth 3
+}
+if ($ProfilesMode) {
+  $configMap["profiles_mode"] = $true
+  $configMap["profiles_dir"] = $ProfilesDir
+  $configMap["profiles_config"] = (Join-Path $ProfilesDir "profiles.json")
+  $configMap["initial_sync_hours"] = 24
+  $configMap["control_port"] = 18763
+}
+$config = $configMap | ConvertTo-Json -Depth 3
 $config | Set-Content -LiteralPath (Join-Path $PanelDir "panel_config.json") -Encoding UTF8
 
 $uv = "$env:USERPROFILE\.local\bin\uv.exe"
 if (-not (Test-Path $uv)) { $uv = "uv" }
 $env:UV_CACHE_DIR = Join-Path $PanelDir ".uv-cache"
+$systemPython = $null
+$pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCommand -and $pythonCommand.Source -and ($pythonCommand.Source -notlike "*WindowsApps*") -and ($pythonCommand.Source -notlike "*CodexSandboxOffline*")) {
+  $systemPython = $pythonCommand.Source
+}
 $venv = Join-Path $PanelDir ".venv"
+if ($systemPython) {
+  $venv = Join-Path $PanelDir ".venv-user"
+}
 $venvPython = Join-Path $venv "Scripts\python.exe"
 $venvPythonw = Join-Path $venv "Scripts\pythonw.exe"
+$panelPackages = @("pystray", "Pillow", "qrcode[pil]")
+if ($env:OS -eq "Windows_NT") {
+  $panelPackages += "pywin32"
+}
 
 if (-not (Test-Path $venvPythonw)) {
-  & $uv venv $venv
-  & $uv pip install --python $venvPython pystray Pillow "qrcode[pil]"
+  if ($systemPython) {
+    & $systemPython -m venv $venv
+  } else {
+    & $uv venv $venv
+  }
+}
+
+$moduleProbe = "import importlib.util,sys; mods=['pystray','PIL','qrcode']; mods += ['win32com'] if sys.platform.startswith('win') else []; missing=[m for m in mods if importlib.util.find_spec(m) is None]; print(' '.join(missing))"
+$missingModules = ""
+if (Test-Path $venvPython) {
+  $missingModules = ((& $venvPython -c $moduleProbe) -join " ").Trim()
+}
+if ($missingModules) {
+  Write-Host "Instalando dependencias faltantes do painel: $missingModules"
+  & $uv pip install --python $venvPython @panelPackages
 }
 
 if (Test-Path $iconGenerator) {
@@ -60,7 +103,7 @@ if (Test-Path $pyvenvCfg) {
   if ($homeLine) {
     $pythonHome = ($homeLine -replace '^home\s*=\s*', '').Trim()
     $basePythonw = Join-Path $pythonHome "pythonw.exe"
-    if (Test-Path $basePythonw) {
+    if ((Test-Path $basePythonw) -and ($basePythonw -notlike "*CodexSandboxOffline*")) {
       $shortcutPythonw = $basePythonw
     }
   }
@@ -91,8 +134,35 @@ $desktopShortcutPath = Join-Path $desktop "WhatsApp MCP Tray.lnk"
 if (Test-Path $desktopShortcutPath) { Remove-Item -LiteralPath $desktopShortcutPath -Force }
 New-PanelShortcut -Path $desktopShortcutPath -Arguments ('"' + $launcherPath + '"') -Description "WhatsApp MCP local panel"
 
+$legacyDesktopShortcutPath = Join-Path $desktop "WhatsApp MCP Painel.lnk"
+if (Test-Path $legacyDesktopShortcutPath) {
+  try {
+    Remove-Item -LiteralPath $legacyDesktopShortcutPath -Force
+  } catch {
+    Write-Warning "Atalho antigo da area de trabalho nao removido. Vou reapontar para o launcher novo: $($_.Exception.Message)"
+    try {
+      New-PanelShortcut -Path $legacyDesktopShortcutPath -Arguments ('"' + $launcherPath + '"') -Description "WhatsApp MCP local panel"
+    } catch {
+      Write-Warning "Atalho antigo continua bloqueado. Use o atalho novo 'WhatsApp MCP Tray.lnk': $($_.Exception.Message)"
+    }
+  }
+}
+
 New-Item -ItemType Directory -Path $startup -Force | Out-Null
 $startupShortcutPath = Join-Path $startup "WhatsApp MCP Tray.lnk"
+$legacyStartupShortcutPath = Join-Path $startup "WhatsApp MCP Painel.lnk"
+if (Test-Path $legacyStartupShortcutPath) {
+  try {
+    Remove-Item -LiteralPath $legacyStartupShortcutPath -Force
+  } catch {
+    Write-Warning "Auto-start antigo nao removido. Vou reapontar para o launcher novo: $($_.Exception.Message)"
+    try {
+      New-PanelShortcut -Path $legacyStartupShortcutPath -Arguments ('"' + $launcherPath + '" --minimized') -Description "WhatsApp MCP local panel minimized"
+    } catch {
+      Write-Warning "Auto-start antigo continua bloqueado. O botao Auto-start da UI pode tentar corrigir depois: $($_.Exception.Message)"
+    }
+  }
+}
 $startupTempShortcutPath = Join-Path $PanelDir "WhatsApp MCP Tray Startup.lnk"
 $autoStartCreated = $false
 try {

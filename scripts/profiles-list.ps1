@@ -12,9 +12,10 @@ if (-not @($config.profiles).Count) {
 }
 
 @($config.profiles) | Sort-Object port | ForEach-Object {
-  $paths = Ensure-ProfileDirs $ProfilesDir $_.slug
+  $paths = Ensure-ProfileDirs -ProfilesDir $ProfilesDir -Slug $_.slug -Config $config -Profile $_
   [pscustomobject]@{
     Slug = $_.slug
+    Project = $_.project
     Name = $_.name
     Number = $_.number
     Port = $_.port

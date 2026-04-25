@@ -28,7 +28,7 @@ if (-not @($config.profiles).Count) {
 }
 
 @($config.profiles | Sort-Object port) | ForEach-Object {
-  $paths = Ensure-ProfileDirs $ProfilesDir $_.slug
+  $paths = Ensure-ProfileDirs -ProfilesDir $ProfilesDir -Slug $_.slug -Config $config -Profile $_
   $messagesDb = Join-Path $paths.StoreDir "messages.db"
   $stats = Get-SqliteStats $messagesDb
   [pscustomobject]@{

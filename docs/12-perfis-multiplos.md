@@ -1,125 +1,141 @@
-# 12 - Perfis multiplos de WhatsApp
+# 12 - Perfis Multiplos De WhatsApp
 
-Este fluxo e experimental e vive em branch separada. Ele nao altera a instalacao estavel de um unico WhatsApp.
+Este e o fluxo principal do kit.
 
-Objetivo: manter varios numeros de WhatsApp autenticados na mesma maquina, cada um com pasta, porta, sessao e banco SQLite proprios.
+Objetivo: manter varios numeros de WhatsApp autenticados na mesma maquina, cada um com pasta, porta, sessao e banco SQLite proprios, organizados por projeto.
 
-## Estrutura local
+## Estrutura Local
 
 Por padrao:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles\
   profiles.json
+  profiles_state.json
   bin\
     whatsapp-bridge.exe
-  profiles\
-    vendedor-joao\
-      whatsapp-bridge\
-        store\
-          whatsapp.db
-          messages.db
-      bridge.out.log
-      bridge.err.log
-      .bridge.pid
-    vendedora-maria\
-      whatsapp-bridge\
-        store\
-          whatsapp.db
-          messages.db
+  projetos\
+    Vendedores\
+      vendedor-joao\
+        whatsapp-bridge\
+          store\
+            whatsapp.db
+            messages.db
+        bridge.out.log
+        bridge.err.log
+        .bridge.pid
+    Administrativo\
+      financeiro\
+        whatsapp-bridge\
+          store\
+            whatsapp.db
+            messages.db
 ```
 
 Cada perfil tem:
 
 - `slug`: identificador tecnico.
-- `name`: nome visivel.
+- `project`: projeto visivel.
+- `name`: nome visivel do perfil.
 - `description`: descricao livre.
-- `number`: numero esperado.
+- `number`: numero esperado ou identificado pelo QR.
 - `port`: porta local exclusiva, como `8101`, `8102`, `8103`.
 - `whatsapp.db`: sessao autenticada daquele numero.
 - `messages.db`: mensagens sincronizadas daquele numero.
 
-## 1. Compilar bridge compartilhada
+## Instalacao
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-build-bridge.ps1
+git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
+cd whatsapp-mcp-local-kit
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 ```
 
-Isso cria:
+Com tentativa de dependencias via `winget`, se o usuario autorizar:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp -InstallMissingDependencies
+```
+
+Validacao:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+```
+
+O comando instala o painel, compila a bridge de perfis, cria o atalho e registra o MCP `whatsapp-profiles`.
+
+## Primeiro Uso No Painel
+
+1. Abra o icone **WhatsApp MCP Tray** na area de trabalho.
+2. Na primeira abertura, escolha a pasta geral das bases.
+3. Clique em **Cadastrar primeiro perfil**.
+4. Digite um projeto novo ou escolha um projeto ja criado.
+5. Preencha nome e descricao do perfil.
+6. O numero e opcional. Exemplo recomendado: `+55 (55) 999096505`.
+7. Salve.
+8. Selecione o perfil e clique em **Conectar QR**.
+9. Escaneie o QR no WhatsApp do celular.
+10. Quando aparecer autenticado, clique em **Voltar ao painel**.
+11. O perfil segue sincronizando em background.
+
+Para outro numero, clique em **Adicionar outro perfil** e repita.
+
+## Projetos
+
+Projetos sao categorias criadas pelo usuario, como:
 
 ```text
-Documents\WhatsApp MCP Profiles\bin\whatsapp-bridge.exe
+Vendedores
+Pessoal
+Administrativo
+Obra da casa
 ```
 
-## 2. Cadastrar perfis
+O painel nao precisa trazer projetos pre-cadastrados. Ao digitar um projeto novo, ele cria a pasta do projeto automaticamente dentro da pasta geral. Ao cadastrar outro perfil, os projetos existentes aparecem como opcoes.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-create.ps1 -Name "Vendedor Joao" -Number "TELEFONE_COM_DDI" -Description "Vendedor SP"
-```
+## Regra De Sincronizacao
 
-Exemplo com slug manual:
+Depois que um perfil autentica:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-create.ps1 -Slug vendedor-joao -Name "Vendedor Joao" -Number "TELEFONE_COM_DDI" -Description "Vendedor SP"
-```
+- a primeira sincronizacao entra em modo inteligente;
+- ela roda por no minimo 60 minutos;
+- ela pode ficar aberta por ate 24 horas;
+- ela pode fechar antes quando a ultima mensagem local estiver perto do horario atual e o ritmo de importacao ficar baixo por tempo suficiente;
+- depois disso, entra em sincronizacoes random.
 
-Listar perfis:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-list.ps1
-```
-
-## 3. Login por QR Code
-
-Rode um perfil por vez para escanear o QR:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-login.ps1 -Slug vendedor-joao
-```
-
-Quando aparecer o QR, escaneie no WhatsApp do numero correspondente.
-
-Depois que autenticar e sincronizar, use `Ctrl+C` para fechar. A sessao fica salva em:
+Valores padrao:
 
 ```text
-Documents\WhatsApp MCP Profiles\profiles\vendedor-joao\whatsapp-bridge\store\whatsapp.db
+minimo primeira sync: 60 min
+lag maximo para considerar perto do agora: 45 min
+ritmo maximo para considerar estabilizado: 20 msgs/min
+tempo estavel antes de fechar: 30 min
+limite maximo: 24 h
 ```
 
-Repita para cada vendedor.
+Esses parametros existem para evitar fechar cedo durante uma importacao pesada. A regra nao depende apenas de tempo; ela olha tambem para horario da ultima mensagem e velocidade de crescimento da base.
 
-## 4. Sincronizar todos
+## Status Do Painel
 
-Depois que todos tiverem sessao (`whatsapp.db`), rode:
+- **Aguardando QR**: o perfil ainda nao autenticou.
+- **Primeira sync inteligente**: autenticado e importando base inicial.
+- **Sincronizando random**: porta aberta em uma janela curta de sync.
+- **Aguardando random**: porta fechada, base pesquisavel, proxima sync agendada.
+- **Pausado**: perfil parado ate o usuario retomar.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-start-all.ps1
-```
+## Remover Perfil
 
-Status:
+Selecione o perfil e clique em **Remover perfil**.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-status.ps1
-```
+O painel pergunta:
 
-Parar todos:
+- **Remover so do painel**: remove da UI e do MCP, mas mantem a pasta do perfil com `messages.db`, `whatsapp.db`, logs e midias.
+- **Apagar perfil e dados locais**: fecha a bridge e apaga a pasta do perfil.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-stop-all.ps1
-```
+Por seguranca, a exclusao automatica so apaga pastas dentro da pasta geral do sistema.
 
-Parar um:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\profiles-stop-all.ps1 -Slug vendedor-joao
-```
-
-## 5. MCP de perfis
-
-Configurar no Codex e/ou Claude Desktop:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -All
-```
+## MCP De Perfis
 
 Nome do MCP:
 
@@ -138,7 +154,7 @@ list_all_profile_assets
 download_profile_media
 ```
 
-Exemplos de pedido:
+Exemplos:
 
 ```text
 Liste os perfis de WhatsApp disponiveis e diga quais estao com base sincronizada.
@@ -149,10 +165,30 @@ Pesquise "orcamento" em todos os perfis e agrupe por vendedor.
 ```
 
 ```text
-No perfil vendedor-joao, liste PDFs, imagens, audios e links do telefone TELEFONE_COM_DDI.
+No perfil vendedor-joao, liste PDFs, imagens, audios e links do telefone +55 (11) 91234-5678.
 ```
 
-## O que fica isolado
+## Comandos Uteis
+
+Status:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\profiles-status.ps1
+```
+
+Iniciar todos os perfis com sessao:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\profiles-start-all.ps1
+```
+
+Parar todos:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\profiles-stop-all.ps1
+```
+
+## Isolamento
 
 Cada perfil usa:
 
@@ -164,10 +200,9 @@ Cada perfil usa:
 
 Assim, sincronizar o numero de um vendedor nao mistura base com outro.
 
-## Limites desta primeira versao
+## Limites Desta Versao
 
-- Ainda nao tem painel visual para cadastrar perfis.
-- Ainda nao cria auto-start para todos os perfis.
+- O QR exige acao humana no celular.
 - Envio de mensagem por perfil nao foi exposto no MCP de perfis.
-- Download de midia exige que a bridge daquele perfil esteja rodando.
+- Download de midia fisica exige que a bridge daquele perfil esteja rodando.
 - Se uma porta estiver ocupada, altere o campo `port` em `profiles.json`.

@@ -13,7 +13,7 @@ if ($Slug) {
 }
 
 foreach ($profile in $profiles) {
-  $paths = Ensure-ProfileDirs $ProfilesDir $profile.slug
+  $paths = Ensure-ProfileDirs -ProfilesDir $ProfilesDir -Slug $profile.slug -Config $config -Profile $profile
   if (-not (Test-Path $paths.PidPath)) {
     Write-Host "$($profile.slug): sem pid"
     continue

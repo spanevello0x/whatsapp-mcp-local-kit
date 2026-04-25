@@ -1,105 +1,115 @@
-# 09 - Arquitetura e operacao
+# 09 - Arquitetura E Operacao
 
-Este kit instala um conjunto local de componentes para WhatsApp + MCP no Windows e no macOS.
+Este kit instala um conjunto local de componentes para WhatsApp + MCP.
 
-## Componentes
+O fluxo principal e Windows em modo perfis. O macOS ainda tem guia separado em `docs/10-macos.md`.
+
+## Componentes Do Repositorio
 
 ```text
 whatsapp-mcp-local-kit/
   scripts/                         instalacao, build, verificacao e MCP
   panel/                           painel de bandeja em Python/Tkinter
-  vendor/lharries-whatsapp-mcp/    bridge Go + servidor MCP Python
+  profiles-mcp-server/             servidor MCP para multiplos perfis
+  vendor/lharries-whatsapp-mcp/    bridge Go + codigo upstream
   docs/                            guias de instalacao, seguranca e operacao
 ```
 
-Depois da instalacao, os arquivos operacionais ficam em:
+## Componentes Instalados
+
+Painel:
 
 ```text
-C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 ```
 
-No macOS:
+Bases:
 
 ```text
-~/WhatsApp-MCP/whatsapp-mcp
-~/Documents/WhatsApp MCP Panel
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 ```
 
-## Como funciona
-
-1. A bridge Go conecta ao WhatsApp Web pelo aparelho vinculado.
-2. A bridge grava sessao e mensagens em SQLite local.
-3. O painel de bandeja inicia e para a bridge em janelas de sincronizacao.
-4. O servidor MCP Python consulta a base local e expoe ferramentas para Codex/Claude Desktop.
-5. Codex/Claude so recebe conteudo quando uma consulta MCP pede dados.
-
-Com a porta fechada, as consultas de pesquisa continuam funcionando porque leem o SQLite local. A bridge/porta 8080 so precisa estar aberta para atualizar a base, enviar mensagens ou baixar midias.
-
-## Dados locais
+Bridge compartilhada:
 
 ```text
-whatsapp-bridge\store\whatsapp.db   sessao do WhatsApp
-whatsapp-bridge\store\messages.db   mensagens sincronizadas
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles\bin\whatsapp-bridge.exe
 ```
 
-Esses arquivos nunca devem ser publicados.
-
-## Bandeja/menu bar e auto-start
-
-No Windows, o instalador cria:
+Atalhos:
 
 ```text
 Desktop\WhatsApp MCP Tray.lnk
 AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
 ```
 
-O atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. Quando minimizado, ele fica na bandeja.
-O icone do Desktop usa `whatsapp-mcp-icon.ico`, gerado durante a instalacao.
-O painel tambem tem botoes `Pasta` e `Copiar DB` para abrir a pasta do `messages.db` ou copiar o caminho exato da base para informar a um agente de IA.
+## Como Funciona
 
-No macOS, o instalador cria:
+1. O painel carrega `profiles.json`.
+2. O usuario cadastra projetos e perfis.
+3. Cada perfil recebe uma porta local propria.
+4. Ao clicar em **Conectar QR**, o painel inicia a bridge daquele perfil.
+5. A bridge conecta ao WhatsApp Web pelo aparelho vinculado.
+6. A bridge grava sessao e mensagens em SQLite local.
+7. O painel monitora crescimento da base, horario da ultima mensagem e status da porta.
+8. O servidor MCP `whatsapp-profiles` consulta os bancos locais.
+9. Codex/Claude so recebem conteudo quando uma consulta MCP pede dados.
+
+Com a porta fechada, pesquisas continuam funcionando porque leem `messages.db` direto. A bridge precisa abrir para QR, sincronizacao e download de midia fisica.
+
+## Dados Locais
+
+Por perfil:
 
 ```text
-~/Desktop/WhatsApp MCP Tray.command
-~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
+whatsapp-bridge\store\whatsapp.db   sessao do WhatsApp
+whatsapp-bridge\store\messages.db   mensagens sincronizadas
+bridge.out.log                      log principal
+bridge.err.log                      log de erro
+.bridge.pid                         pid da bridge quando rodando
 ```
 
-O LaunchAgent abre o painel no login. O menu bar substitui a ideia de bandeja do Windows.
+Esses arquivos nunca devem ser publicados.
 
-## Status visual
+## Bandeja E Auto-start
 
-O icone da bandeja/menu bar muda de cor:
+O atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. Quando oculto, ele fica na bandeja.
+
+O icone muda de status:
 
 ```text
-Verde   rodando/sincronizando
-Amarelo aguardando proximo sync
-Cinza   stopado/pausado
+Verde   sincronizando
+Amarelo aguardando
+Cinza   pausado/parado
 ```
-
-O tooltip do icone tambem mostra o status atual.
 
 ## Sincronizacao
 
-O painel usa modo rajadas por padrao:
+Primeira sync inteligente:
+
+```text
+initial_sync_min_minutes: 60
+initial_sync_live_lag_minutes: 45
+initial_sync_live_rate_per_minute: 20
+initial_sync_stable_minutes: 30
+initial_sync_hours: 24
+```
+
+Sync random:
 
 ```text
 sync_min_minutes: 5
 sync_idle_minutes: 3
 sync_max_minutes: 25
-sync_extend_minutes: 10
 random_sync_min_minutes: 10
 random_sync_max_minutes: 50
 ```
-
-Tambem existe botao de sincronizacao manual. Se o WhatsApp nao para de receber mensagens, a sync fecha por timeout maximo; se a base fica quieta, fecha por inatividade.
 
 ## Verificacao
 
 Depois de instalar:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
-O script checa runtimes, bridge, painel, atalhos, auto-start, porta local e banco SQLite.
+O script checa painel, atalhos, auto-start, bridge, config MCP e bases locais.

@@ -19,6 +19,36 @@ function Get-ProfilesConfigPath {
   return (Join-Path $ProfilesDir "profiles.json")
 }
 
+function Get-ObjectProperty {
+  param(
+    [object]$Object,
+    [string]$Name,
+    [object]$Default = $null
+  )
+
+  if ($null -eq $Object) { return $Default }
+  if ($Object.PSObject.Properties.Name -contains $Name) {
+    $value = $Object.$Name
+    if ($null -ne $value -and "$value".Trim()) {
+      return $value
+    }
+  }
+  return $Default
+}
+
+function ConvertTo-SafeFolderName {
+  param(
+    [string]$Value,
+    [string]$Fallback = "Projeto"
+  )
+
+  $name = ($Value -replace '[<>:"/\\|?*\x00-\x1f]+', '-').Trim(' ', '.', '-')
+  $name = $name -replace '\s+', ' '
+  if (-not $name) { $name = $Fallback }
+  if ($name.Length -gt 80) { $name = $name.Substring(0, 80).Trim(' ', '.', '-') }
+  return $name
+}
+
 function Read-ProfilesConfig {
   param([string]$ProfilesDir)
 
@@ -46,6 +76,9 @@ function Read-ProfilesConfig {
   if (-not ($config.PSObject.Properties.Name -contains "profiles")) {
     $config | Add-Member -MemberType NoteProperty -Name "profiles" -Value @()
   }
+  if (-not ($config.PSObject.Properties.Name -contains "projects")) {
+    $config | Add-Member -MemberType NoteProperty -Name "projects" -Value @()
+  }
 
   return $config
 }
@@ -65,18 +98,56 @@ function Write-ProfilesConfig {
 function Get-ProfileDir {
   param(
     [string]$ProfilesDir,
-    [string]$Slug
+    [string]$Slug,
+    [object]$Config = $null,
+    [object]$Profile = $null
   )
-  return (Join-Path (Join-Path $ProfilesDir "profiles") $Slug)
+
+  if ($null -eq $Config) {
+    $Config = Read-ProfilesConfig $ProfilesDir
+  }
+  if ($null -eq $Profile) {
+    $Profile = Get-Profile $Config $Slug
+  }
+
+  $customDir = Get-ObjectProperty $Profile "profile_dir" ""
+  if ($customDir) {
+    return $customDir
+  }
+
+  $projectFolder = Get-ObjectProperty $Profile "project_folder" ""
+  $projectSlug = Get-ObjectProperty $Profile "project_slug" ""
+  if (-not $projectFolder -and $projectSlug) {
+    foreach ($project in @($Config.projects)) {
+      if ((Get-ObjectProperty $project "slug" "") -eq $projectSlug) {
+        $projectFolder = Get-ObjectProperty $project "folder_name" (Get-ObjectProperty $project "project_folder" $projectSlug)
+        break
+      }
+    }
+  }
+  if (-not $projectFolder) {
+    $projectName = Get-ObjectProperty $Profile "project" ""
+    if ($projectName) {
+      $projectFolder = ConvertTo-SafeFolderName $projectName
+    } elseif ($projectSlug) {
+      $projectFolder = $projectSlug
+    } else {
+      $projectFolder = "Sem projeto"
+    }
+  }
+
+  return (Join-Path (Join-Path (Join-Path $ProfilesDir "projetos") $projectFolder) $Slug)
 }
 
 function Ensure-ProfileDirs {
   param(
     [string]$ProfilesDir,
-    [string]$Slug
+    [string]$Slug,
+    [object]$Config = $null,
+    [object]$Profile = $null
   )
 
-  $profileDir = Get-ProfileDir $ProfilesDir $Slug
+  $profileDir = Get-ProfileDir -ProfilesDir $ProfilesDir -Slug $Slug -Config $Config -Profile $Profile
   $bridgeDir = Join-Path $profileDir "whatsapp-bridge"
   $storeDir = Join-Path $bridgeDir "store"
   New-Item -ItemType Directory -Path $storeDir -Force | Out-Null
