@@ -16,6 +16,42 @@ Use atalho para:
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\.venv\Scripts\pythonw.exe
 ```
 
+O argumento deve apontar para:
+
+```text
+"C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\launch_panel.py" --minimized
+```
+
+## Auto-start pendente
+
+Se `verify-local.ps1` mostrar:
+
+```text
+PENDENTE: nenhum auto-start valido encontrado
+```
+
+ou:
+
+```text
+PENDENTE: fallback legado existe, mas ABRIR_WHATSAPP_MCP.bat esta desatualizado
+```
+
+o Windows/antivirus provavelmente bloqueou escrita na pasta Startup ou no launcher `.bat`.
+
+O painel ainda funciona pelo atalho da Area de Trabalho. Para auto-start, libere pontualmente no antivirus:
+
+```text
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+```
+
+Depois rode:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-panel.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
+```
+
 ## Conferir banco
 
 ```powershell

@@ -8,6 +8,8 @@ $ErrorActionPreference = "Continue"
 Write-Host "== WhatsApp MCP Local Verify ==" -ForegroundColor Cyan
 Write-Host "BridgeRoot: $BridgeRoot"
 Write-Host "PanelDir:   $PanelDir"
+$desktop = [Environment]::GetFolderPath("Desktop")
+$startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
 
 $env:Path = (@(
   [Environment]::GetEnvironmentVariable("Path", "Machine"),
@@ -26,14 +28,34 @@ $paths = @(
   (Join-Path $BridgeRoot "build-tmp\whatsapp-bridge.exe"),
   $PanelDir,
   (Join-Path $PanelDir "whatsapp_mcp_panel.py"),
+  (Join-Path $PanelDir "launch_panel.py"),
+  (Join-Path $PanelDir "ABRIR_WHATSAPP_MCP.bat"),
   (Join-Path $PanelDir "whatsapp-mcp-icon.ico"),
   (Join-Path $PanelDir ".venv\Scripts\pythonw.exe"),
-  (Join-Path ([Environment]::GetFolderPath("Desktop")) "WhatsApp MCP Tray.lnk"),
-  (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk")
+  (Join-Path $desktop "WhatsApp MCP Tray.lnk"),
+  (Join-Path $startup "WhatsApp MCP Tray.lnk"),
+  (Join-Path $startup "WhatsApp MCP Painel.lnk")
 )
 
 foreach ($p in $paths) {
   "{0,-85} {1}" -f $p, (Test-Path $p)
+}
+
+Write-Host "`n-- Auto-start --"
+$trayStartup = Join-Path $startup "WhatsApp MCP Tray.lnk"
+$legacyStartup = Join-Path $startup "WhatsApp MCP Painel.lnk"
+$legacyBatch = Join-Path $PanelDir "ABRIR_WHATSAPP_MCP.bat"
+if (Test-Path $trayStartup) {
+  Write-Host "OK: WhatsApp MCP Tray.lnk existe em Startup"
+} elseif ((Test-Path $legacyStartup) -and (Test-Path $legacyBatch)) {
+  $legacyContent = Get-Content -LiteralPath $legacyBatch -Raw -ErrorAction SilentlyContinue
+  if ($legacyContent -match "launch_panel\.py" -and $legacyContent -match "pythonw\.exe") {
+    Write-Host "OK: usando fallback legado WhatsApp MCP Painel.lnk -> ABRIR_WHATSAPP_MCP.bat"
+  } else {
+    Write-Host "PENDENTE: fallback legado existe, mas ABRIR_WHATSAPP_MCP.bat esta desatualizado" -ForegroundColor Yellow
+  }
+} else {
+  Write-Host "PENDENTE: nenhum auto-start valido encontrado" -ForegroundColor Yellow
 }
 
 Write-Host "`n-- Runtimes --"

@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $panelSource = Join-Path $repoRoot "panel\whatsapp_mcp_panel.py"
 $launcherSource = Join-Path $repoRoot "panel\launch_panel.py"
+$legacyBatchSource = Join-Path $repoRoot "panel\ABRIR_WHATSAPP_MCP.bat"
 $iconGenerator = Join-Path $repoRoot "scripts\generate-icons.py"
 $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
 $desktop = [Environment]::GetFolderPath("Desktop")
@@ -15,6 +16,13 @@ $desktop = [Environment]::GetFolderPath("Desktop")
 New-Item -ItemType Directory -Path $PanelDir -Force | Out-Null
 Copy-Item -LiteralPath $panelSource -Destination (Join-Path $PanelDir "whatsapp_mcp_panel.py") -Force
 Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $PanelDir "launch_panel.py") -Force
+if (Test-Path $legacyBatchSource) {
+  try {
+    Copy-Item -LiteralPath $legacyBatchSource -Destination (Join-Path $PanelDir "ABRIR_WHATSAPP_MCP.bat") -Force
+  } catch {
+    Write-Warning "Launcher legado .bat nao atualizado. O Windows/antivirus bloqueou escrita: $($_.Exception.Message)"
+  }
+}
 
 $config = @{
   bridge_root = $BridgeRoot
@@ -63,30 +71,45 @@ if (-not (Test-Path $iconPath)) {
 }
 $wsh = New-Object -ComObject WScript.Shell
 
+function New-PanelShortcut {
+  param(
+    [string]$Path,
+    [string]$Arguments,
+    [string]$Description
+  )
+  $shortcut = $wsh.CreateShortcut($Path)
+  $shortcut.TargetPath = $shortcutPythonw
+  $shortcut.Arguments = $Arguments
+  $shortcut.WorkingDirectory = $PanelDir
+  $shortcut.Description = $Description
+  $shortcut.IconLocation = $iconPath
+  $shortcut.WindowStyle = 7
+  $shortcut.Save()
+}
+
 $desktopShortcutPath = Join-Path $desktop "WhatsApp MCP Tray.lnk"
 if (Test-Path $desktopShortcutPath) { Remove-Item -LiteralPath $desktopShortcutPath -Force }
-$desktopShortcut = $wsh.CreateShortcut($desktopShortcutPath)
-$desktopShortcut.TargetPath = $shortcutPythonw
-$desktopShortcut.Arguments = '"' + $launcherPath + '"'
-$desktopShortcut.WorkingDirectory = $PanelDir
-$desktopShortcut.Description = "WhatsApp MCP local panel"
-$desktopShortcut.IconLocation = $iconPath
-$desktopShortcut.WindowStyle = 7
-$desktopShortcut.Save()
+New-PanelShortcut -Path $desktopShortcutPath -Arguments ('"' + $launcherPath + '"') -Description "WhatsApp MCP local panel"
 
 New-Item -ItemType Directory -Path $startup -Force | Out-Null
 $startupShortcutPath = Join-Path $startup "WhatsApp MCP Tray.lnk"
-if (Test-Path $startupShortcutPath) { Remove-Item -LiteralPath $startupShortcutPath -Force }
-$startupShortcut = $wsh.CreateShortcut($startupShortcutPath)
-$startupShortcut.TargetPath = $shortcutPythonw
-$startupShortcut.Arguments = '"' + $launcherPath + '" --minimized'
-$startupShortcut.WorkingDirectory = $PanelDir
-$startupShortcut.Description = "WhatsApp MCP local panel minimized"
-$startupShortcut.IconLocation = $iconPath
-$startupShortcut.WindowStyle = 7
-$startupShortcut.Save()
+$startupTempShortcutPath = Join-Path $PanelDir "WhatsApp MCP Tray Startup.lnk"
+$autoStartCreated = $false
+try {
+  if (Test-Path $startupTempShortcutPath) { Remove-Item -LiteralPath $startupTempShortcutPath -Force }
+  New-PanelShortcut -Path $startupTempShortcutPath -Arguments ('"' + $launcherPath + '" --minimized') -Description "WhatsApp MCP local panel minimized"
+  Copy-Item -LiteralPath $startupTempShortcutPath -Destination $startupShortcutPath -Force
+  $autoStartCreated = Test-Path $startupShortcutPath
+} catch {
+  Write-Warning "Auto-start nao criado. O Windows/antivirus bloqueou escrita em Startup: $($_.Exception.Message)"
+  Write-Warning "Crie manualmente um atalho para $launcherPath com argumento --minimized em: $startup"
+}
 
 Write-Host "Painel instalado em: $PanelDir"
 Write-Host "Icone criado: $iconPath"
 Write-Host "Atalho criado: WhatsApp MCP Tray.lnk"
-Write-Host "Auto-start criado: WhatsApp MCP Tray.lnk"
+if ($autoStartCreated) {
+  Write-Host "Auto-start criado: WhatsApp MCP Tray.lnk"
+} else {
+  Write-Host "Auto-start pendente: ver aviso acima"
+}

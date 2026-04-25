@@ -27,6 +27,14 @@ C:\Users\SEU_USUARIO\.local\bin\uv.exe
 C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp\build-tmp\whatsapp-bridge.exe
 ```
 
+Se o auto-start for bloqueado, libere tambem a pasta Startup do proprio usuario:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+```
+
+Nao libere Startup para baixar ou executar arquivos desconhecidos. A excecao aqui serve apenas para permitir o atalho `WhatsApp MCP Tray.lnk` criado pelo instalador.
+
 Se for compilar:
 
 ```text
