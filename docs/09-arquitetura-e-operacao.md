@@ -34,6 +34,8 @@ No macOS:
 4. O servidor MCP Python consulta a base local e expoe ferramentas para Codex/Claude Desktop.
 5. Codex/Claude so recebe conteudo quando uma consulta MCP pede dados.
 
+Com a porta fechada, as consultas de pesquisa continuam funcionando porque leem o SQLite local. A bridge/porta 8080 so precisa estar aberta para atualizar a base, enviar mensagens ou baixar midias.
+
 ## Dados locais
 
 ```text
@@ -81,12 +83,15 @@ O tooltip do icone tambem mostra o status atual.
 O painel usa modo rajadas por padrao:
 
 ```text
-sync_window_minutes: 8
+sync_min_minutes: 5
+sync_idle_minutes: 3
+sync_max_minutes: 25
+sync_extend_minutes: 10
 random_sync_min_minutes: 10
 random_sync_max_minutes: 50
 ```
 
-Tambem existe botao de sincronizacao manual.
+Tambem existe botao de sincronizacao manual. Se o WhatsApp nao para de receber mensagens, a sync fecha por timeout maximo; se a base fica quieta, fecha por inatividade.
 
 ## Verificacao
 

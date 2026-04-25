@@ -32,7 +32,10 @@ path = Path(sys.argv[1])
 bridge_root = sys.argv[2]
 path.write_text(json.dumps({
     "bridge_root": bridge_root,
-    "sync_window_minutes": 8,
+    "sync_min_minutes": 5,
+    "sync_idle_minutes": 3,
+    "sync_max_minutes": 25,
+    "sync_extend_minutes": 10,
     "random_sync_min_minutes": 10,
     "random_sync_max_minutes": 50,
 }, indent=2), encoding="utf-8")

@@ -12,7 +12,7 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Painel local em Python/Tkinter para bandeja/menu bar.
 - Atalhos/LaunchAgent sem terminal permanente aberto.
 - Icone proprio no Desktop e status dinamico na bandeja/menu bar.
-- Modo de sincronizacao em rajadas: manual + janelas aleatorias.
+- Modo de sincronizacao em rajadas: manual + janelas aleatorias, fechando por inatividade da base local.
 - Guias para Claude Desktop e Codex.
 - Checklist de seguranca para nao expor conversas.
 - Instalacao opcional de dependencias via `winget`.
@@ -77,6 +77,8 @@ Veja `docs/10-macos.md`.
 ## Para usar com Codex
 
 Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acesso ao computador. O agente deve diagnosticar primeiro, pedir confirmacao antes de mexer em dependencias/antivirus/quarentena e nunca apagar bancos `.db`.
+
+Com a bridge fechada, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP. A porta local `127.0.0.1:8080` so precisa abrir durante sincronizacao, envio de mensagens ou download de midias.
 
 ## Aviso
 

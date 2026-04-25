@@ -18,7 +18,10 @@ Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $PanelDir "launch
 
 $config = @{
   bridge_root = $BridgeRoot
-  sync_window_minutes = 8
+  sync_min_minutes = 5
+  sync_idle_minutes = 3
+  sync_max_minutes = 25
+  sync_extend_minutes = 10
   random_sync_min_minutes = 10
   random_sync_max_minutes = 50
 } | ConvertTo-Json -Depth 3
