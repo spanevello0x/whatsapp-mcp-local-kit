@@ -9,6 +9,7 @@ import signal
 import socket
 import sqlite3
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime
@@ -249,7 +250,7 @@ class App:
     def __init__(self, minimized: bool = False) -> None:
         self.root = tk.Tk()
         self.root.title("WhatsApp MCP Tray")
-        self.root.geometry("740x560")
+        self.root.geometry("900x600")
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.sync_session: dict | None = None
@@ -284,6 +285,10 @@ class App:
         self.pause_button.pack(side=tk.LEFT, padx=4)
         self.resume_button = tk.Button(controls, text="Retomar random", bg=GREEN, fg=TEXT, font=button_font, command=self.resume)
         self.resume_button.pack(side=tk.LEFT, padx=4)
+        self.folder_button = tk.Button(controls, text="Pasta", bg="#334155", fg=TEXT, font=button_font, command=self.open_messages_folder)
+        self.folder_button.pack(side=tk.LEFT, padx=4)
+        self.copy_button = tk.Button(controls, text="Copiar DB", bg="#334155", fg=TEXT, font=button_font, command=self.copy_messages_path)
+        self.copy_button.pack(side=tk.LEFT, padx=4)
         tk.Button(controls, text="Sair", font=button_font, command=self.quit).pack(side=tk.RIGHT, padx=4)
         tk.Button(controls, text="Ocultar", font=button_font, command=self.hide).pack(side=tk.RIGHT, padx=4)
         self.info = tk.Text(body, height=12, bg=BG, fg=TEXT, relief=tk.FLAT, wrap=tk.WORD, font=("Segoe UI", 9))
@@ -433,6 +438,30 @@ class App:
             self.last_action = "Random retomado; proxima sync sorteada."
         self.refresh()
 
+    def open_messages_folder(self) -> None:
+        folder = MESSAGES_DB.parent
+        try:
+            if os.name == "nt":
+                os.startfile(str(folder))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(folder)])
+            else:
+                subprocess.Popen(["xdg-open", str(folder)])
+            self.last_action = f"Pasta da base aberta: {folder}"
+        except Exception as exc:
+            self.last_action = f"Erro ao abrir pasta da base: {exc}"
+        self.refresh()
+
+    def copy_messages_path(self) -> None:
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(str(MESSAGES_DB))
+            self.root.update()
+            self.last_action = f"Caminho copiado: {MESSAGES_DB}"
+        except Exception as exc:
+            self.last_action = f"Erro ao copiar caminho: {exc}"
+        self.refresh()
+
     def tick(self) -> None:
         if not PAUSED_FLAG.exists():
             now = time.time()
@@ -542,6 +571,7 @@ class App:
             ("Ultima sync concluida", last_sync, "good"),
             ("Proxima sync", next_line, "warn" if not paused else "muted"),
             ("Base local", db_line, "good" if not stats.get("error") else "bad"),
+            ("Arquivo mensagens", str(MESSAGES_DB), "muted"),
             ("Ultima acao", self.last_action, "muted"),
         ])
         self.log.delete("1.0", tk.END)

@@ -13,6 +13,7 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 - Atalhos/LaunchAgent sem terminal permanente aberto.
 - Icone proprio no Desktop e status dinamico na bandeja/menu bar.
 - Modo de sincronizacao em rajadas: manual + janelas aleatorias, fechando por inatividade da base local.
+- Tool MCP para listar arquivos e links por conversa, telefone ou texto, agrupando por fotos, videos, audios, PDFs, documentos e links.
 - Guias para Claude Desktop e Codex.
 - Checklist de seguranca para nao expor conversas.
 - Instalacao opcional de dependencias via `winget`.
@@ -78,7 +79,7 @@ Veja `docs/10-macos.md`.
 
 Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acesso ao computador. O agente deve diagnosticar primeiro, pedir confirmacao antes de mexer em dependencias/antivirus/quarentena e nunca apagar bancos `.db`.
 
-Com a bridge fechada, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP. A porta local `127.0.0.1:8080` so precisa abrir durante sincronizacao, envio de mensagens ou download de midias.
+Com a bridge fechada, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP. A porta local `127.0.0.1:8080` so precisa abrir durante sincronizacao, envio de mensagens ou download de midias. Para inventariar arquivos e links, peca para usar `list_chat_assets`.
 
 ## Aviso
 

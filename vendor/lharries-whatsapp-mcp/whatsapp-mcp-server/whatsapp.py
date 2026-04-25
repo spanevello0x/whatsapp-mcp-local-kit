@@ -1,14 +1,16 @@
 import sqlite3
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 import os.path
 import requests
 import json
 import audio
+import re
 
 MESSAGES_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'whatsapp-bridge', 'store', 'messages.db')
 WHATSAPP_API_BASE_URL = "http://localhost:8080/api"
+LINK_RE = re.compile(r"https?://[^\s<>()\"']+")
 
 @dataclass
 class Message:
@@ -618,6 +620,198 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
     except sqlite3.Error as e:
         print(f"Database error: {e}")
         return None
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+def _media_category(media_type: Optional[str], filename: Optional[str]) -> str:
+    media_type = (media_type or "").lower()
+    filename = (filename or "").lower()
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+
+    if media_type == "image":
+        return "fotos"
+    if media_type == "video":
+        return "videos"
+    if media_type == "audio":
+        return "audios"
+    if media_type == "document":
+        if ext == "pdf":
+            return "pdfs"
+        return "documentos"
+    return "outros"
+
+
+def _download_path(chat_jid: str, filename: Optional[str]) -> Optional[str]:
+    if not filename:
+        return None
+    filename = os.path.basename(filename)
+    store_dir = os.path.join(os.path.dirname(MESSAGES_DB_PATH), chat_jid.replace(":", "_"))
+    return os.path.abspath(os.path.join(store_dir, filename))
+
+
+def _append_filters(where_clauses: list, params: list, query: Optional[str], phone_number: Optional[str], chat_jid: Optional[str], after: Optional[str], before: Optional[str]) -> None:
+    if query:
+        pattern = f"%{query}%"
+        where_clauses.append("""(
+            LOWER(c.name) LIKE LOWER(?)
+            OR LOWER(m.content) LIKE LOWER(?)
+            OR LOWER(COALESCE(m.filename, '')) LIKE LOWER(?)
+            OR LOWER(m.sender) LIKE LOWER(?)
+            OR LOWER(m.chat_jid) LIKE LOWER(?)
+        )""")
+        params.extend([pattern, pattern, pattern, pattern, pattern])
+
+    if phone_number:
+        pattern = f"%{phone_number}%"
+        where_clauses.append("(m.sender LIKE ? OR m.chat_jid LIKE ?)")
+        params.extend([pattern, pattern])
+
+    if chat_jid:
+        where_clauses.append("m.chat_jid = ?")
+        params.append(chat_jid)
+
+    if after:
+        datetime.fromisoformat(after)
+        where_clauses.append("m.timestamp > ?")
+        params.append(after)
+
+    if before:
+        datetime.fromisoformat(before)
+        where_clauses.append("m.timestamp < ?")
+        params.append(before)
+
+
+def list_chat_assets(
+    query: Optional[str] = None,
+    phone_number: Optional[str] = None,
+    chat_jid: Optional[str] = None,
+    after: Optional[str] = None,
+    before: Optional[str] = None,
+    limit_per_category: int = 50,
+) -> Dict[str, Any]:
+    """List media files and links grouped by type from the local WhatsApp database."""
+    limit_per_category = max(1, min(int(limit_per_category), 200))
+    categories = {
+        "fotos": [],
+        "videos": [],
+        "audios": [],
+        "pdfs": [],
+        "documentos": [],
+        "links": [],
+        "outros": [],
+    }
+    counts = {key: 0 for key in categories}
+    where_clauses = []
+    params = []
+    _append_filters(where_clauses, params, query, phone_number, chat_jid, after, before)
+    base_where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+    try:
+        conn = sqlite3.connect(MESSAGES_DB_PATH)
+        cursor = conn.cursor()
+
+        media_where = base_where
+        if media_where:
+            media_where += " AND COALESCE(m.media_type, '') <> ''"
+        else:
+            media_where = "WHERE COALESCE(m.media_type, '') <> ''"
+
+        cursor.execute(f"""
+            SELECT
+                m.timestamp,
+                m.sender,
+                c.name,
+                m.chat_jid,
+                m.id,
+                m.media_type,
+                m.filename,
+                m.content,
+                m.file_length
+            FROM messages m
+            JOIN chats c ON m.chat_jid = c.jid
+            {media_where}
+            ORDER BY m.timestamp DESC
+        """, tuple(params))
+
+        for row in cursor.fetchall():
+            timestamp, sender, chat_name, row_chat_jid, message_id, media_type, filename, content, file_length = row
+            category = _media_category(media_type, filename)
+            counts[category] += 1
+            if len(categories[category]) >= limit_per_category:
+                continue
+            local_path = _download_path(row_chat_jid, filename)
+            categories[category].append({
+                "timestamp": timestamp,
+                "chat_name": chat_name,
+                "chat_jid": row_chat_jid,
+                "sender": sender,
+                "message_id": message_id,
+                "media_type": media_type,
+                "filename": filename,
+                "file_length": file_length,
+                "caption": content,
+                "downloaded": bool(local_path and os.path.exists(local_path)),
+                "local_path": local_path if local_path and os.path.exists(local_path) else None,
+                "download_hint": "Use download_media(message_id, chat_jid) com a bridge aberta para baixar este arquivo.",
+            })
+
+        link_where = base_where
+        if link_where:
+            link_where += " AND m.content LIKE '%http%'"
+        else:
+            link_where = "WHERE m.content LIKE '%http%'"
+
+        cursor.execute(f"""
+            SELECT
+                m.timestamp,
+                m.sender,
+                c.name,
+                m.chat_jid,
+                m.id,
+                m.content
+            FROM messages m
+            JOIN chats c ON m.chat_jid = c.jid
+            {link_where}
+            ORDER BY m.timestamp DESC
+        """, tuple(params))
+
+        for row in cursor.fetchall():
+            timestamp, sender, chat_name, row_chat_jid, message_id, content = row
+            for link in LINK_RE.findall(content or ""):
+                counts["links"] += 1
+                if len(categories["links"]) >= limit_per_category:
+                    continue
+                categories["links"].append({
+                    "timestamp": timestamp,
+                    "chat_name": chat_name,
+                    "chat_jid": row_chat_jid,
+                    "sender": sender,
+                    "message_id": message_id,
+                    "url": link.rstrip(".,);]"),
+                    "message_excerpt": (content or "")[:500],
+                })
+
+        return {
+            "messages_db": os.path.abspath(MESSAGES_DB_PATH),
+            "media_store_dir": os.path.abspath(os.path.dirname(MESSAGES_DB_PATH)),
+            "filters": {
+                "query": query,
+                "phone_number": phone_number,
+                "chat_jid": chat_jid,
+                "after": after,
+                "before": before,
+                "limit_per_category": limit_per_category,
+            },
+            "counts": counts,
+            "items": categories,
+            "note": "A pesquisa usa a base local e funciona com a porta fechada. Baixar arquivo fisico exige a bridge aberta.",
+        }
+
+    except sqlite3.Error as e:
+        return {"error": f"Database error: {e}", "messages_db": os.path.abspath(MESSAGES_DB_PATH)}
+    except ValueError as e:
+        return {"error": f"Invalid date filter: {e}", "messages_db": os.path.abspath(MESSAGES_DB_PATH)}
     finally:
         if 'conn' in locals():
             conn.close()

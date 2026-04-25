@@ -56,6 +56,7 @@ AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.
 
 O atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. Quando minimizado, ele fica na bandeja.
 O icone do Desktop usa `whatsapp-mcp-icon.ico`, gerado durante a instalacao.
+O painel tambem tem botoes `Pasta` e `Copiar DB` para abrir a pasta do `messages.db` ou copiar o caminho exato da base para informar a um agente de IA.
 
 No macOS, o instalador cria:
 

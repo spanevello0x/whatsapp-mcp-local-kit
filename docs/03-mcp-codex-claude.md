@@ -88,3 +88,19 @@ codex mcp list
 ```
 
 Comece com consultas read-only antes de usar envio de mensagens.
+
+## Pesquisa de arquivos e links
+
+A tool `list_chat_assets` lista itens da base local classificados em:
+
+```text
+fotos, videos, audios, pdfs, documentos, links, outros
+```
+
+Exemplo de pedido no Codex ou Claude:
+
+```text
+No WhatsApp, pesquise pelo telefone 5511999999999 e liste arquivos e links por categoria.
+```
+
+Ela funciona mesmo com a porta 8080 fechada, porque le o `messages.db` direto. Para baixar o arquivo fisico, use `download_media(message_id, chat_jid)` com a bridge aberta.

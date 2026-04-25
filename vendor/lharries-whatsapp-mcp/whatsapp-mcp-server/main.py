@@ -9,6 +9,7 @@ from whatsapp import (
     get_contact_chats as whatsapp_get_contact_chats,
     get_last_interaction as whatsapp_get_last_interaction,
     get_message_context as whatsapp_get_message_context,
+    list_chat_assets as whatsapp_list_chat_assets,
     send_message as whatsapp_send_message,
     send_file as whatsapp_send_file,
     send_audio_message as whatsapp_audio_voice_message,
@@ -153,6 +154,37 @@ def get_message_context(
     """
     context = whatsapp_get_message_context(message_id, before, after)
     return context
+
+@mcp.tool()
+def list_chat_assets(
+    query: Optional[str] = None,
+    phone_number: Optional[str] = None,
+    chat_jid: Optional[str] = None,
+    after: Optional[str] = None,
+    before: Optional[str] = None,
+    limit_per_category: int = 50
+) -> Dict[str, Any]:
+    """List WhatsApp files and links grouped by type from the local database.
+
+    Works with the bridge/port closed because it reads messages.db directly.
+    Use query for a contact name, group name, phone number, filename, caption, or text.
+
+    Args:
+        query: Optional free-text search across chat name, phone/JID, filename, caption, and message text
+        phone_number: Optional phone number fragment to filter sender/chat
+        chat_jid: Optional exact chat JID
+        after: Optional ISO-8601 date/time lower bound
+        before: Optional ISO-8601 date/time upper bound
+        limit_per_category: Maximum items returned per category, up to 200
+    """
+    return whatsapp_list_chat_assets(
+        query=query,
+        phone_number=phone_number,
+        chat_jid=chat_jid,
+        after=after,
+        before=before,
+        limit_per_category=limit_per_category
+    )
 
 @mcp.tool()
 def send_message(
