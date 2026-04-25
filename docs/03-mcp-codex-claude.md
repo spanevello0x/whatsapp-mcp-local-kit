@@ -1,22 +1,32 @@
-# 03 - Codex e Claude Desktop
+# 03 - Codex E Claude Desktop
 
-Configuracao automatica opcional:
+O modo principal do kit registra o MCP:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -All
+```text
+whatsapp-profiles
 ```
 
-No macOS:
+Ele consulta varios perfis/numeros a partir dos bancos locais em `WhatsApp MCP Profiles`.
 
-```bash
-./scripts/configure-mcp-macos.sh --all
-```
+## Configuracao Automatica
 
-Ou escolha apenas um:
+Durante o bootstrap:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -Codex
-powershell -ExecutionPolicy Bypass -File .\scripts\configure-mcp.ps1 -Claude
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
+```
+
+Ou manualmente:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -All
+```
+
+Escolha apenas um cliente:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -Codex
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -Claude
 ```
 
 ## Claude Desktop
@@ -27,80 +37,70 @@ Arquivo no Windows:
 %APPDATA%\Claude\claude_desktop_config.json
 ```
 
-Arquivo no macOS:
-
-```text
-~/Library/Application Support/Claude/claude_desktop_config.json
-```
-
 Exemplo:
 
 ```json
 {
   "mcpServers": {
-    "whatsapp": {
+    "whatsapp-profiles": {
       "command": "C:\\Users\\SEU_USUARIO\\.local\\bin\\uv.exe",
       "args": [
         "--directory",
-        "C:\\Users\\SEU_USUARIO\\CLAUDE COWORK\\Whatsapp\\whatsapp-mcp\\whatsapp-mcp-server",
+        "C:\\Users\\SEU_USUARIO\\Documents\\whatsapp-mcp-local-kit\\profiles-mcp-server",
         "run",
         "main.py"
-      ]
+      ],
+      "env": {
+        "WHATSAPP_MCP_PROFILES_CONFIG": "C:\\Users\\SEU_USUARIO\\Documents\\WhatsApp MCP Profiles\\profiles.json"
+      }
     }
   }
 }
 ```
 
-Exemplo macOS:
-
-```json
-{
-  "mcpServers": {
-    "whatsapp": {
-      "command": "/opt/homebrew/bin/uv",
-      "args": [
-        "--directory",
-        "/Users/SEU_USUARIO/WhatsApp-MCP/whatsapp-mcp/whatsapp-mcp-server",
-        "run",
-        "main.py"
-      ]
-    }
-  }
-}
-```
-
-Preserve outros MCPs existentes.
+O script faz merge e preserva outros MCPs existentes.
 
 ## Codex
 
-Windows:
+Depois da configuracao automatica:
 
 ```powershell
-codex mcp add whatsapp -- "C:\Users\SEU_USUARIO\.local\bin\uv.exe" --directory "C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp\whatsapp-mcp-server" run main.py
 codex mcp list
 ```
 
-macOS:
+O servidor deve aparecer como `whatsapp-profiles`.
 
-```bash
-codex mcp add whatsapp -- "$(command -v uv)" --directory "$HOME/WhatsApp-MCP/whatsapp-mcp/whatsapp-mcp-server" run main.py
-codex mcp list
-```
-
-Comece com consultas read-only antes de usar envio de mensagens.
-
-## Pesquisa de arquivos e links
-
-A tool `list_chat_assets` lista itens da base local classificados em:
+## Tools Principais
 
 ```text
-fotos, videos, audios, pdfs, documentos, links, outros
+list_profiles
+search_profile_messages
+search_all_profile_messages
+list_profile_assets
+list_all_profile_assets
+download_profile_media
 ```
 
-Exemplo de pedido no Codex ou Claude:
+## Exemplos De Uso
 
 ```text
-No WhatsApp, pesquise pelo telefone TELEFONE_COM_DDI e liste arquivos e links por categoria.
+Liste os perfis de WhatsApp disponiveis e diga quais tem base local.
 ```
 
-Ela funciona mesmo com a porta 8080 fechada, porque le o `messages.db` direto. Para baixar o arquivo fisico, use `download_media(message_id, chat_jid)` com a bridge aberta.
+```text
+Pesquise "orcamento" em todos os perfis, agrupe por projeto e destaque telefones envolvidos.
+```
+
+```text
+No perfil vendedor-joao, liste fotos, videos, audios, PDFs, documentos e links do telefone +55 (11) 91234-5678.
+```
+
+## Porta Fechada
+
+Pesquisas em mensagens e inventario de links/arquivos funcionam com a porta fechada, porque o MCP le `messages.db` direto.
+
+Baixar uma midia fisica com `download_profile_media` exige a bridge do perfil aberta, porque o arquivo precisa ser recuperado pelo WhatsApp Web.
+
+## macOS
+
+O modo perfis com painel de bandeja e auto-start esta focado em Windows. Para macOS, veja `docs/10-macos.md`, que descreve o fluxo legado de um numero e notas de adaptacao.

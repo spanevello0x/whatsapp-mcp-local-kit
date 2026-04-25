@@ -1,22 +1,23 @@
-# 00 - O que e automatico
+# 00 - O Que E Automatico
 
-Este kit tenta deixar a instalacao o mais proxima possivel de copia/cola, mas algumas partes dependem do computador e da conta de WhatsApp da pessoa.
+Este kit tenta deixar a instalacao o mais proxima possivel de copia/cola, mas algumas partes sempre dependem do computador, do antivirus e da conta de WhatsApp da pessoa.
 
-O escopo estavel esta em `docs/11-escopo-estavel.md`. Ideias maiores, como perfis de vendedores, exportacao automatica de CRM, download em lote e transcricao de audios, ficam fora do fluxo principal por enquanto.
+O fluxo principal de producao e o **modo perfis**. Ele permite cadastrar varios numeros, separados por projeto, cada um com base local propria.
 
-## O que o bootstrap pode fazer
+## O Que O Bootstrap Pode Fazer
 
-- Verificar se Go, Python, uv, Git e GCC existem.
+- Verificar se Git, Go, Python, uv e GCC/MSYS2 existem.
 - Tentar instalar dependencias faltantes via `winget`, se voce usar `-InstallMissingDependencies`.
-- Copiar a bridge incluida em `vendor/lharries-whatsapp-mcp`, se ainda nao existir instalacao local.
-- Compilar a bridge para `build-tmp/whatsapp-bridge.exe` no Windows ou `build-tmp/whatsapp-bridge` no macOS.
+- Compilar a bridge Go vendorizada.
 - Instalar o painel em `Documents\WhatsApp MCP Panel`.
-- Criar atalho na area de trabalho.
+- Criar icone no Desktop.
 - Criar auto-start para abrir o painel minimizado na bandeja.
-- Registrar o MCP no Codex e/ou Claude Desktop, se voce usar `-ConfigureCodexMcp`, `-ConfigureClaudeMcp` ou `-ConfigureAllMcp`.
-- No macOS, fazer instalacao equivalente com `scripts/bootstrap-macos.sh`, Homebrew e LaunchAgent.
+- Criar a pasta geral das bases, por padrao `Documents\WhatsApp MCP Profiles`.
+- Instalar a bridge compartilhada em `Documents\WhatsApp MCP Profiles\bin`.
+- Registrar o MCP `whatsapp-profiles` no Codex e/ou Claude Desktop, se voce usar `-ConfigureAllMcp`.
+- Validar a instalacao com `scripts/verify-profiles.ps1`.
 
-## O que nao pode vir pronto no GitHub
+## O Que Nao Pode Vir Pronto No GitHub
 
 - Sessao do WhatsApp.
 - QR Code autenticado.
@@ -25,15 +26,31 @@ O escopo estavel esta em `docs/11-escopo-estavel.md`. Ideias maiores, como perfi
 - `messages.db`.
 - Excecoes de antivirus aplicadas automaticamente.
 - Permissao para enviar mensagens.
+- Credenciais do Codex, Claude ou GitHub.
 
 Cada usuario precisa escanear o QR no proprio WhatsApp e decidir quais pastas liberar no proprio antivirus.
 
-## Resultado esperado
+## Resultado Esperado
 
-Depois do bootstrap e do primeiro login:
+Depois do bootstrap:
 
-- O painel abre sem janela preta.
-- O painel minimiza para a bandeja no Windows ou menu bar no macOS.
-- A bridge sincroniza em rajadas ou sob demanda.
-- A base local fica no proprio PC.
+- O icone **WhatsApp MCP Tray** aparece na area de trabalho.
+- O painel abre sem janela preta permanente.
+- O painel pode ficar minimizado na bandeja.
+- O usuario escolhe uma pasta geral para as bases.
+- Cada perfil fica em uma pasta separada por projeto.
+- Cada perfil tem sessao e `messages.db` proprios.
+- A bridge abre porta local apenas para sincronizar, autenticar ou baixar midia.
 - Codex/Claude Desktop podem consultar a base via MCP depois de configurados.
+
+## Comando Principal
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
+```
+
+Com instalacao de dependencias via `winget`, se o usuario autorizar:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp -InstallMissingDependencies
+```

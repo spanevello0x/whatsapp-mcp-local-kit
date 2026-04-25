@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -786,6 +787,18 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, port 
 	}()
 }
 
+func getEnvInt(name string, fallback int) int {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
+}
+
 func main() {
 	// Set up logger
 	logger := waLog.Stdout("Client", "INFO", true)
@@ -906,8 +919,12 @@ func main() {
 
 	fmt.Println("\n✓ Connected to WhatsApp! Type 'help' for commands.")
 
+	if client.Store.ID != nil {
+		fmt.Printf("SELF_JID:%s\n", client.Store.ID.String())
+	}
+
 	// Start REST API server
-	startRESTServer(client, messageStore, 8080)
+	startRESTServer(client, messageStore, getEnvInt("WHATSAPP_MCP_PORT", 8080))
 
 	// Create a channel to keep the main goroutine alive
 	exitChan := make(chan os.Signal, 1)

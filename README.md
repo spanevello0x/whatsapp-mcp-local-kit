@@ -1,96 +1,181 @@
 # WhatsApp MCP Local Kit
 
-Kit em portugues para rodar uma bridge local do WhatsApp com MCP, painel de bandeja/menu bar e guias para usar com Codex ou Claude Desktop.
+Kit em portugues para instalar um painel local do WhatsApp MCP com:
+
+- varios numeros/perfis na mesma maquina;
+- organizacao por projetos;
+- base SQLite local separada por perfil;
+- icone no Desktop e bandeja do Windows;
+- primeira sincronizacao inteligente;
+- sincronizacoes random depois da base estabilizar;
+- MCP para Codex e Claude pesquisarem mensagens, arquivos e links.
 
 Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou credenciais. Ele inclui instalador, painel, scripts e uma copia vendorizada do projeto open-source [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp), distribuida sob MIT com atribuicao preservada.
 
-Escopo estavel atual: instalar, sincronizar em rajadas, pesquisar a base local via MCP e inventariar arquivos/links registrados. Veja `docs/11-escopo-estavel.md`.
+## Comece Por Aqui
 
-## O que este kit entrega
+Para uma instalacao assistida por IA, abra [COMECE_AQUI.md](COMECE_AQUI.md) e cole o prompt em uma conversa nova do Codex ou Claude com acesso ao computador.
 
-- Guia de preparacao no Windows.
-- Guia de preparacao no macOS.
-- Checklist de antivirus sem liberar PowerShell globalmente.
-- Painel local em Python/Tkinter para bandeja/menu bar.
-- Atalhos/LaunchAgent sem terminal permanente aberto.
-- Icone proprio no Desktop e status dinamico na bandeja/menu bar.
-- Modo de sincronizacao em rajadas: manual + janelas aleatorias, fechando por inatividade da base local.
-- Tool MCP para listar arquivos e links por conversa, telefone ou texto, agrupando por fotos, videos, audios, PDFs, documentos e links.
-- Guias para Claude Desktop e Codex.
-- Checklist de seguranca para nao expor conversas.
-- Instalacao opcional de dependencias via `winget`.
-- Configuracao opcional do MCP no Codex e no Claude Desktop.
-- Codigo da bridge incluido no proprio repositorio em `vendor/lharries-whatsapp-mcp`.
+O fluxo de producao recomendado hoje e o **modo perfis**:
 
-## Instalacao rapida
+- cada numero de WhatsApp vira um perfil;
+- cada perfil pertence a um projeto, como Vendedores, Pessoal ou Administrativo;
+- cada perfil tem `whatsapp.db`, `messages.db`, logs e porta local proprios;
+- a IA consulta a base pelo MCP mesmo quando a bridge daquele perfil esta fechada.
 
-### Windows
+## O Que Este Kit Entrega
+
+- Bootstrap Windows para preparar dependencias, compilar a bridge e instalar o painel.
+- Painel local em Python/Tkinter com icone no Desktop e bandeja.
+- Auto-start opcional para abrir minimizado com o Windows.
+- Cadastro de perfis por projeto.
+- QR Code sob demanda por perfil.
+- Identificacao do numero pelo QR quando a bridge retorna o JID do WhatsApp.
+- Primeira sincronizacao inteligente, com limite maximo e fechamento automatico quando a importacao estabiliza.
+- Sincronizacoes random depois da primeira sincronizacao.
+- Botao para abrir pasta do projeto e copiar caminho do `messages.db`.
+- Botao para remover perfil, escolhendo entre preservar dados ou apagar a pasta/base local.
+- MCP `whatsapp-profiles` para pesquisar mensagens e listar fotos, videos, audios, PDFs, documentos e links.
+- Documentacao de antivirus com excecoes pontuais, sem liberar PowerShell globalmente.
+- Guias para Codex e Claude Desktop.
+
+## Aviso De Seguranca
+
+`messages.db` contem conversas reais. Nunca publique `.db`, logs, backups de sessao, QR Codes ou tokens.
+
+O painel usa uma bridge local nao oficial do WhatsApp Web. Ela deve ficar limitada a `127.0.0.1` e pode quebrar se o protocolo do WhatsApp mudar. Para operacao comercial critica e oficial, avalie tambem a WhatsApp Business Platform da Meta.
+
+Antes de rodar o instalador, leia [docs/02-antivirus.md](docs/02-antivirus.md). O caminho seguro e liberar apenas as pastas do kit, do painel e das bases locais. Nao crie excecao global para `powershell.exe`, `cmd.exe`, `python.exe`, `go.exe` ou `wscript.exe`.
+
+## Instalacao Rapida No Windows
+
+Clone o repositorio:
 
 ```powershell
 git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
 cd whatsapp-mcp-local-kit
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
 ```
 
-Para tentar instalar dependencias faltantes automaticamente via `winget`:
+Instale em modo perfis e configure MCP para Codex e Claude:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -InstallMissingDependencies -PatchLocalhost
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 ```
 
-Para tambem registrar o MCP no Codex e no Claude Desktop:
+Se faltarem dependencias e voce quiser tentar instalar via `winget`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost -ConfigureAllMcp
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp -InstallMissingDependencies
 ```
 
-Se ainda nao houver sessao autenticada, rode o primeiro login em terminal visivel para escanear o QR:
+Valide a instalacao:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
-### macOS / MacBook
+Depois abra o icone **WhatsApp MCP Tray** na area de trabalho.
 
-```bash
-git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
-cd whatsapp-mcp-local-kit
-chmod +x scripts/*.sh
-./scripts/bootstrap-macos.sh --install-missing-dependencies --patch-localhost --configure-all-mcp
+## Primeiro Uso
+
+1. Ao abrir o painel pela primeira vez, escolha a pasta geral onde as bases ficarao salvas.
+2. Clique em **Cadastrar primeiro perfil**.
+3. Informe o projeto, nome do perfil e descricao. O numero e opcional; se ficar vazio, o QR pode identificar depois.
+4. Clique em **Conectar QR**.
+5. Escaneie o QR no WhatsApp do celular.
+6. Quando aparecer autenticado, clique em **Voltar ao painel**.
+7. Pode ocultar na bandeja. A sincronizacao continua em background.
+
+Estrutura padrao da base:
+
+```text
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles\
+  profiles.json
+  profiles_state.json
+  bin\
+    whatsapp-bridge.exe
+  projetos\
+    Vendedores\
+      vendedor-joao\
+        whatsapp-bridge\
+          store\
+            whatsapp.db
+            messages.db
+        bridge.out.log
+        bridge.err.log
 ```
 
-Se ainda nao houver sessao autenticada:
+## Como A Sincronizacao Funciona
 
-```bash
-./scripts/first-login-macos.sh
+Na primeira autenticacao de cada perfil, o painel inicia uma **primeira sync inteligente**.
+
+Por padrao, ela:
+
+- roda por no minimo 60 minutos;
+- pode ficar aberta por ate 24 horas;
+- fecha antes das 24 horas se a ultima mensagem local estiver perto do horario atual e o ritmo de importacao cair por tempo suficiente;
+- depois agenda sincronizacoes random.
+
+Depois da primeira sincronizacao, cada perfil abre a porta local somente durante janelas de sync manual ou random. Fora dessas janelas, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP.
+
+Downloads de midia fisica ainda exigem a bridge do perfil aberta, porque o arquivo precisa ser baixado pelo WhatsApp Web.
+
+## Remover Um Numero
+
+Selecione o perfil no painel e clique em **Remover perfil**.
+
+O painel oferece duas opcoes:
+
+- **Remover so do painel**: tira o perfil da lista e do MCP, mas preserva `whatsapp.db`, `messages.db`, logs e midias na pasta local.
+- **Apagar perfil e dados locais**: fecha a bridge e apaga a pasta do perfil, incluindo sessoes, mensagens, logs e arquivos baixados.
+
+Por seguranca, o painel so apaga automaticamente pastas dentro da pasta geral configurada no sistema.
+
+## Usar Com Codex Ou Claude
+
+Depois do bootstrap com `-ConfigureAllMcp`, o servidor MCP se chama:
+
+```text
+whatsapp-profiles
 ```
 
-Veja `docs/10-macos.md`.
+Ferramentas principais:
 
-## Fluxo recomendado
+```text
+list_profiles
+search_profile_messages
+search_all_profile_messages
+list_profile_assets
+list_all_profile_assets
+download_profile_media
+```
 
-1. Leia `docs/00-o-que-e-automatico.md`.
-2. Confira o escopo atual em `docs/11-escopo-estavel.md`.
-3. Configure excecoes pontuais em `docs/02-antivirus.md`.
-4. Rode `scripts/bootstrap-windows.ps1`.
-5. Se precisar, rode `scripts/first-login.ps1` e escaneie o QR.
-6. Use o atalho `WhatsApp MCP Tray`.
-7. Configure MCP com `scripts/configure-mcp.ps1` ou `docs/03-mcp-codex-claude.md`.
-8. Valide com `scripts/verify-local.ps1`.
+Exemplos:
 
-## Para usar com Codex
+```text
+Liste os perfis de WhatsApp disponiveis e diga quais ja tem base local.
+```
 
-Abra `PROMPT-CODEX.md`, copie o prompt e cole em uma conversa do Codex com acesso ao computador. O agente deve diagnosticar primeiro, pedir confirmacao antes de mexer em dependencias/antivirus/quarentena e nunca apagar bancos `.db`.
+```text
+Pesquise "orcamento" em todos os perfis e agrupe por projeto e vendedor.
+```
 
-Com a bridge fechada, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP. A porta local `127.0.0.1:8080` so precisa abrir durante sincronizacao, envio de mensagens ou download de midias. Para inventariar arquivos e links, peca para usar `list_chat_assets`.
+```text
+No perfil vendedor-joao, liste PDFs, imagens, audios e links do telefone +55 (11) 91234-5678.
+```
 
-## Aviso
+## Documentacao
 
-`messages.db` contem conversas reais. Nunca publique `.db`, logs, backups de sessao ou tokens. Este repo ja vem com `.gitignore` agressivo para reduzir risco.
+- [COMECE_AQUI.md](COMECE_AQUI.md): roteiro didatico para usuario e IA instalarem.
+- [PROMPT-CODEX.md](PROMPT-CODEX.md): prompt pronto para colar no Codex/Claude.
+- [docs/00-o-que-e-automatico.md](docs/00-o-que-e-automatico.md): o que o instalador faz e o que depende do usuario.
+- [docs/02-antivirus.md](docs/02-antivirus.md): excecoes recomendadas e quarentena.
+- [docs/03-mcp-codex-claude.md](docs/03-mcp-codex-claude.md): configuracao MCP.
+- [docs/04-seguranca.md](docs/04-seguranca.md): privacidade e exposicao local.
+- [docs/05-troubleshooting.md](docs/05-troubleshooting.md): erros comuns.
+- [docs/10-macos.md](docs/10-macos.md): notas para macOS.
+- [docs/12-perfis-multiplos.md](docs/12-perfis-multiplos.md): detalhes do modo perfis.
 
-Partes da bridge sao vendorizadas de `lharries/whatsapp-mcp` sob MIT. Veja `NOTICE` e `docs/08-vendor-e-licenca.md`.
+## Licenca E Origem
 
-Para entender o software inteiro, veja `docs/09-arquitetura-e-operacao.md`.
-Para MacBook/macOS, veja `docs/10-macos.md`.
-
-Este kit nao e oficial da Meta/WhatsApp e pode quebrar se o protocolo do WhatsApp Web mudar. Para uso comercial critico, avalie tambem a WhatsApp Business Platform oficial.
+Partes da bridge sao vendorizadas de `lharries/whatsapp-mcp` sob MIT. Veja [NOTICE](NOTICE) e [docs/08-vendor-e-licenca.md](docs/08-vendor-e-licenca.md).

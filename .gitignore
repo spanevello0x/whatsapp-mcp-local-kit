@@ -1,6 +1,9 @@
 *.db
 *.db-shm
 *.db-wal
+*.log
+*.pid
+*.lnk
 store/
 backups/
 bridge.log*
@@ -11,7 +14,12 @@ __pycache__/
 *.pyc
 build/
 build-tmp/
+tmp/
 WhatsApp MCP Panel/
+WhatsApp MCP Profiles/
+panel_config.json
+profiles.json
+profiles_state.json
 secrets/
 auth.json
 *.token

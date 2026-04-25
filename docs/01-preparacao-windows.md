@@ -1,66 +1,84 @@
-# 01 - Preparacao no Windows
+# 01 - Preparacao No Windows
 
-Verifique os runtimes:
+Antes de instalar, verifique os runtimes:
 
 ```powershell
+git --version
 go version
 python --version
 uv --version
-git --version
 gcc --version
 ```
 
 Requisitos usuais:
 
+- Git
 - Go 1.21+
 - Python 3.11+
 - uv
-- Git
 - GCC/MSYS2 para `github.com/mattn/go-sqlite3`
 
-Opcao manual: clone a bridge upstream:
+Se quiser que o kit tente instalar dependencias faltantes via `winget`, use `-InstallMissingDependencies` no bootstrap. Em maquinas com antivirus sensivel, leia `docs/02-antivirus.md` antes.
+
+## Instalacao Recomendada
 
 ```powershell
-mkdir "$env:USERPROFILE\CLAUDE COWORK\Whatsapp" -Force
-cd "$env:USERPROFILE\CLAUDE COWORK\Whatsapp"
-git clone https://github.com/lharries/whatsapp-mcp.git whatsapp-mcp
+git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
+cd whatsapp-mcp-local-kit
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 ```
 
-Opcao recomendada: use o bootstrap deste kit. Ele copia a bridge vendorizada incluida neste proprio repositorio:
+Com tentativa de instalar dependencias:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -PatchLocalhost
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp -InstallMissingDependencies
 ```
 
-Para tentar instalar dependencias faltantes com `winget`:
+Validacao:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -InstallMissingDependencies -PatchLocalhost
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
-Caminho padrao usado pelos scripts:
+## Caminhos Padrao
+
+Painel:
 
 ```text
-C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 ```
 
-Primeiro login:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\first-login.ps1
-```
-
-Escaneie o QR pelo WhatsApp do celular em `Dispositivos conectados`.
-
-Depois do primeiro login, compile o executavel usado pelo painel:
-
-```powershell
-cd CAMINHO_DO_WHATSAPP_MCP_LOCAL_KIT
-powershell -ExecutionPolicy Bypass -File .\scripts\build-bridge.ps1 -PatchLocalhost
-```
-
-O executavel esperado fica em:
+Bases/perfis:
 
 ```text
-C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp\build-tmp\whatsapp-bridge.exe
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 ```
+
+Bridge compartilhada:
+
+```text
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles\bin\whatsapp-bridge.exe
+```
+
+Atalho:
+
+```text
+Desktop\WhatsApp MCP Tray.lnk
+```
+
+Auto-start:
+
+```text
+AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+```
+
+## Primeiro Login
+
+O primeiro login deve ser feito pelo painel:
+
+1. Abra **WhatsApp MCP Tray**.
+2. Cadastre um perfil.
+3. Clique em **Conectar QR**.
+4. Escaneie o QR pelo WhatsApp do celular em **Aparelhos conectados**.
+
+Depois disso, o painel gerencia a primeira sync inteligente e as sincronizacoes random.

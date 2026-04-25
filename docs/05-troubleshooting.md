@@ -1,61 +1,105 @@
 # 05 - Troubleshooting
 
+## Validacao Geral
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+```
+
+Esse verificador confere painel, atalhos, auto-start, bridge de perfis, config MCP e bases locais.
+
 ## `spawn uv ENOENT`
 
-Use caminho absoluto para `uv.exe` e reinicie Claude/Codex:
+O cliente tentou chamar `uv`, mas o processo nao encontrou no PATH.
 
-```text
-C:\Users\SEU_USUARIO\.local\bin\uv.exe
+No modo perfis, o MCP normalmente usa o Python do painel, entao esse erro costuma indicar uma configuracao antiga do MCP legado. Rode:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -All
 ```
 
-## Janela preta
+Depois feche e abra Codex/Claude Desktop.
 
-Use atalho para:
+## Janela Preta
+
+O atalho correto deve apontar para um `pythonw.exe`, nao para `python.exe`, `powershell.exe` ou `.bat`.
+
+Destino esperado:
 
 ```text
-C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\.venv\Scripts\pythonw.exe
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\.venv-user\Scripts\pythonw.exe
 ```
 
-O argumento deve apontar para:
+Argumento esperado:
 
 ```text
 "C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel\launch_panel.py" --minimized
 ```
 
-## Auto-start pendente
+Se existir um atalho antigo `WhatsApp MCP Painel.lnk`, prefira `WhatsApp MCP Tray.lnk`.
 
-Se `verify-local.ps1` mostrar:
+## Bandeja Nao Abre O Painel
 
-```text
-PENDENTE: nenhum auto-start valido encontrado
+1. Tente abrir novamente pelo icone do Desktop.
+2. Rode `verify-profiles.ps1`.
+3. Confira `Documents\WhatsApp MCP Panel\panel-actions.log`.
+4. Se o antivirus bloqueou scripts ou atalhos, siga `docs/02-antivirus.md` e reinstale o painel:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-panel.ps1 -ProfilesMode
 ```
 
-ou:
+## Auto-start Pendente
 
-```text
-PENDENTE: fallback legado existe, mas ABRIR_WHATSAPP_MCP.bat esta desatualizado
-```
+Se o verificador mostrar Startup ausente ou antigo:
 
-o Windows/antivirus provavelmente bloqueou escrita na pasta Startup ou no launcher `.bat`.
-
-O painel ainda funciona pelo atalho da Area de Trabalho. Para auto-start, libere pontualmente no antivirus:
+1. Libere no antivirus:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
 ```
 
-Depois rode:
+2. Reinstale o painel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-panel.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\install-panel.ps1 -ProfilesMode
 ```
 
-## Conferir banco
+3. Valide:
 
 ```powershell
-python -c "import sqlite3, os; db=os.path.expandvars(r'%USERPROFILE%\CLAUDE COWORK\Whatsapp\whatsapp-mcp\whatsapp-bridge\store\messages.db'); c=sqlite3.connect(db); print(c.execute('select count(*) from messages').fetchone()[0]); print(c.execute('select max(timestamp) from messages').fetchone()[0])"
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+```
+
+Tambem e possivel ativar/desativar auto-start pelo botao **Configuracoes** no painel.
+
+## QR Nao Aparece
+
+- Selecione o perfil correto.
+- Clique em **Conectar QR**.
+- Se a janela ja estava escondida, o botao deve traze-la de volta.
+- Se o perfil ja estiver autenticado, o botao inicia sync em vez de gerar novo QR.
+- Se quiser refazer login, remova o aparelho conectado no WhatsApp do celular e apague somente `whatsapp.db` daquele perfil, preservando `messages.db`.
+
+## Perfil Esta Sincronizando Mas Nao "Termina"
+
+Na primeira sync, o painel usa heuristica:
+
+- tempo minimo;
+- horario da ultima mensagem local;
+- ritmo de crescimento da base;
+- tempo estabilizado;
+- limite maximo.
+
+Em contas com muito movimento, ele pode ficar aberto mais tempo para evitar fechar cedo. Depois que estabiliza, entra em modo random.
+
+## Conferir Banco De Um Perfil
+
+No painel, selecione o perfil e clique em **Copiar DB**. Depois, em PowerShell:
+
+```powershell
+python -c "import sqlite3, sys; db=sys.argv[1]; c=sqlite3.connect(db); print(c.execute('select count(*) from messages').fetchone()[0]); print(c.execute('select max(timestamp) from messages').fetchone()[0])" "COLE_AQUI_O_CAMINHO_DO_MESSAGES_DB"
 ```
 
 ## `no sender key`
@@ -68,13 +112,15 @@ A bridge usa SQLite com CGO. No Windows, isso precisa de compilador C.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-dependencies.ps1 -UseWinget -InstallMsys2
-powershell -ExecutionPolicy Bypass -File .\scripts\build-bridge.ps1 -PatchLocalhost
 ```
 
-Se acabou de instalar MSYS2/GCC, feche e reabra o terminal.
+Depois feche e reabra o terminal.
 
-## Verificacao geral
+## Remover Perfil
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\verify-local.ps1
-```
+Use **Remover perfil** no painel.
+
+- Se escolher **Remover so do painel**, a pasta e os bancos ficam preservados.
+- Se escolher **Apagar perfil e dados locais**, o painel fecha a bridge e remove a pasta do perfil.
+
+Se a exclusao falhar, normalmente algum processo ainda esta segurando log ou banco. Aguarde alguns segundos, valide os processos e tente de novo.

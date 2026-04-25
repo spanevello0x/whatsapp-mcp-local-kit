@@ -1,50 +1,73 @@
-# 11 - Escopo estavel
+# 11 - Escopo Estavel
 
-Este documento congela o escopo operacional atual do kit. Ideias como multiplos perfis de vendedores, exportador automatico de clientes, download em lote e transcricao de audios ficam como backlog e nao fazem parte do fluxo estavel por enquanto.
+Este documento congela o escopo operacional atual do kit.
 
-## Incluido na versao estavel
+O fluxo estavel atual e o **modo perfis**: varios numeros de WhatsApp na mesma maquina, separados por projeto, com uma base SQLite local por perfil.
 
-- Instalar a bridge vendorizada em uma pasta local.
-- Compilar a bridge Go.
+## Incluido Na Versao Estavel
+
+- Instalar a bridge vendorizada.
+- Compilar a bridge Go compartilhada.
 - Instalar painel local em Python/Tkinter.
-- Criar atalho no Desktop e auto-start do painel.
-- Rodar sincronizacao em rajadas ou sob demanda.
-- Manter a porta local aberta apenas durante sincronizacao, envio ou download de midia.
-- Consultar mensagens locais via MCP.
-- Listar arquivos e links ja registrados na base com `list_chat_assets`.
-- Abrir a pasta do `messages.db` pelo painel.
-- Copiar o caminho do `messages.db` pelo painel.
+- Criar icone no Desktop.
+- Criar auto-start do painel na bandeja.
+- Escolher uma pasta geral para todas as bases.
+- Criar projetos e perfis pelo painel.
+- Abrir QR somente sob demanda, por perfil.
+- Identificar numero pelo QR quando a bridge retorna o JID do WhatsApp.
+- Sincronizar varios perfis, cada um com porta local propria.
+- Primeira sincronizacao inteligente por perfil.
+- Sincronizacao manual e random por perfil.
+- Manter a porta local aberta apenas durante QR, sync, envio ou download de midia.
+- Consultar mensagens locais via MCP `whatsapp-profiles`.
+- Listar arquivos e links por perfil ou em todos os perfis.
+- Abrir pasta do projeto pelo painel.
+- Copiar caminho do `messages.db` pelo painel.
+- Remover perfil preservando dados.
+- Remover perfil apagando dados locais, com confirmacao.
 - Configurar MCP no Codex e/ou Claude Desktop.
-- Verificar a instalacao com `scripts/verify-local.ps1` ou `scripts/verify-local-macos.sh`.
+- Verificar a instalacao com `scripts/verify-profiles.ps1`.
 
-## Fora do escopo por enquanto
+## Fora Do Escopo Por Enquanto
 
-- Varios WhatsApps simultaneos na mesma maquina.
-- Perfis separados por vendedor.
-- CRM/exportador automatico de clientes.
-- Download automatico em lote de PDFs, imagens, videos ou audios.
-- Transcricao automatica de audios.
-- Painel para revisar leads, funil ou status comercial.
-- Instalador assinado.
+- Instalador `.exe` assinado.
 - App nativo empacotado.
+- Envio de mensagens por perfil via MCP de perfis.
+- CRM visual dentro do painel.
+- Exportador automatico de clientes pronto.
+- Download automatico em lote de todas as midias.
+- Transcricao automatica de audios.
+- Garantia oficial de compatibilidade com WhatsApp Web.
 
-## Contrato operacional
+Esses itens podem virar features futuras, mas nao sao necessarios para o objetivo principal: manter bases locais pesquisaveis por IA.
 
-O `messages.db` e a fonte local de consulta. Claude/Codex podem pesquisar a base com a porta fechada.
+## Contrato Operacional
 
-A bridge precisa abrir a porta `127.0.0.1:8080` para:
+`messages.db` e a fonte local de consulta.
 
+Codex/Claude podem pesquisar a base com a porta fechada, desde que o MCP esteja configurado e o perfil ainda exista no painel.
+
+A bridge precisa abrir a porta local do perfil para:
+
+- escanear QR;
 - sincronizar mensagens novas;
-- enviar mensagem;
-- enviar arquivo;
-- baixar midia fisica com `download_media`.
+- enviar mensagem, se alguma tool futura expuser isso;
+- baixar midia fisica com `download_profile_media`.
 
-## Criterios de estabilidade
+Cada perfil usa:
+
+- porta propria;
+- `whatsapp.db` proprio;
+- `messages.db` proprio;
+- logs proprios;
+- pasta propria.
+
+## Criterios De Estabilidade
 
 Antes de publicar mudancas, valide:
 
 ```powershell
-python -m py_compile panel\whatsapp_mcp_panel.py panel\launch_panel.py vendor\lharries-whatsapp-mcp\whatsapp-mcp-server\whatsapp.py vendor\lharries-whatsapp-mcp\whatsapp-mcp-server\main.py
+python -m py_compile panel\whatsapp_profiles_panel.py panel\launch_panel.py panel\tray_agent.py profiles-mcp-server\main.py
 git diff --check
 git status --short
 ```

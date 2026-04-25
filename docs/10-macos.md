@@ -1,6 +1,8 @@
 # 10 - MacBook / macOS
 
-O core da bridge funciona em macOS, mas o instalador e o comportamento de bandeja sao diferentes do Windows.
+O core da bridge funciona em macOS, mas o fluxo de producao com painel de **varios perfis**, projetos, bandeja e auto-start esta focado em Windows nesta versao.
+
+No macOS, o kit ainda documenta o fluxo legado de um numero. Para varios perfis no Mac, trate como adaptacao futura ou rode o fluxo Windows em uma maquina Windows dedicada.
 
 No macOS, a "bandeja" equivale ao menu bar. O auto-start e feito por LaunchAgent em:
 
