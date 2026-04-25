@@ -6,6 +6,8 @@ Este repositorio nao inclui mensagens, sessoes, bancos SQLite, QR Codes ou crede
 
 Escopo estavel atual: instalar, sincronizar em rajadas, pesquisar a base local via MCP e inventariar arquivos/links registrados. Veja `docs/11-escopo-estavel.md`.
 
+Branch experimental de perfis: veja `docs/12-perfis-multiplos.md` para testar varios numeros de WhatsApp com bases separadas na mesma maquina.
+
 ## O que este kit entrega
 
 - Guia de preparacao no Windows.
