@@ -79,8 +79,14 @@ Tambem e possivel ativar/desativar auto-start pelo botao **Configuracoes** no pa
 - Selecione o perfil correto.
 - Clique em **Conectar QR**.
 - Se a janela ja estava escondida, o botao deve traze-la de volta.
-- Se o perfil ja estiver autenticado, o botao inicia sync em vez de gerar novo QR.
+- Se o perfil ja estiver autenticado, o painel avisa que nao precisa reconectar. Se a bridge estiver fechada, ele inicia uma sync manual.
 - Se quiser refazer login, remova o aparelho conectado no WhatsApp do celular e apague somente `whatsapp.db` daquele perfil, preservando `messages.db`.
+
+## Pasta Geral Apareceu De Novo
+
+O painel so deveria pedir a pasta geral no primeiro uso real. Se isso aparecer apos uma atualizacao ou reinicio, normalmente o `panel_config.json` foi recriado sem o marcador `profiles_base_confirmed`.
+
+Versoes novas preservam esse marcador e tambem reconhecem uma instalacao existente quando `profiles.json` ja tem projetos ou perfis.
 
 ## Perfil Esta Sincronizando Mas Nao "Termina"
 

@@ -45,6 +45,8 @@ O fluxo de producao recomendado hoje e o **modo perfis**:
 
 O painel usa uma bridge local nao oficial do WhatsApp Web. Ela deve ficar limitada a `127.0.0.1` e pode quebrar se o protocolo do WhatsApp mudar. Para operacao comercial critica e oficial, avalie tambem a WhatsApp Business Platform da Meta.
 
+Esta bridge usa **whatsmeow** em Go. Ela nao e uma conexao Baileys.
+
 Antes de rodar o instalador, leia [docs/02-antivirus.md](docs/02-antivirus.md). O caminho seguro e liberar apenas as pastas do kit, do painel e das bases locais. Nao crie excecao global para `powershell.exe`, `cmd.exe`, `python.exe`, `go.exe` ou `wscript.exe`.
 
 ## Instalacao Rapida No Windows
@@ -85,6 +87,8 @@ Depois abra o icone **WhatsApp MCP Tray** na area de trabalho.
 5. Escaneie o QR no WhatsApp do celular.
 6. Quando aparecer autenticado, clique em **Voltar ao painel**.
 7. Pode ocultar na bandeja. A sincronizacao continua em background.
+
+Se o perfil ja estiver autenticado, **Conectar QR** nao gera outro QR: o painel avisa que a sessao ja existe e, se a bridge estiver fechada, inicia uma sincronizacao manual.
 
 Estrutura padrao da base:
 
@@ -130,6 +134,17 @@ O painel oferece duas opcoes:
 - **Apagar perfil e dados locais**: fecha a bridge e apaga a pasta do perfil, incluindo sessoes, mensagens, logs e arquivos baixados.
 
 Por seguranca, o painel so apaga automaticamente pastas dentro da pasta geral configurada no sistema.
+
+## Se Um QR Vazar
+
+O QR de pareamento e temporario e normalmente perde valor depois que expira ou depois que a sessao e autenticada. Mesmo assim, se alguem escanear o QR antes de voce, essa pessoa pode vincular um aparelho.
+
+Se houver duvida:
+
+1. Abra o WhatsApp no celular.
+2. Va em **Aparelhos conectados**.
+3. Remova qualquer aparelho desconhecido.
+4. Se quiser refazer do zero neste kit, remova esse aparelho tambem e apague apenas o `whatsapp.db` do perfil, preservando `messages.db`.
 
 ## Usar Com Codex Ou Claude
 

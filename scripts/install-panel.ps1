@@ -16,8 +16,20 @@ $legacyBatchSource = Join-Path $repoRoot "panel\ABRIR_WHATSAPP_MCP.bat"
 $iconGenerator = Join-Path $repoRoot "scripts\generate-icons.py"
 $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
 $desktop = [Environment]::GetFolderPath("Desktop")
+$panelConfigPath = Join-Path $PanelDir "panel_config.json"
+$existingPanelConfig = $null
 
 New-Item -ItemType Directory -Path $PanelDir -Force | Out-Null
+if (Test-Path $panelConfigPath) {
+  try {
+    $rawPanelConfig = Get-Content -Raw -LiteralPath $panelConfigPath
+    if ($rawPanelConfig.Trim()) {
+      $existingPanelConfig = $rawPanelConfig | ConvertFrom-Json
+    }
+  } catch {
+    Write-Warning "Nao consegui ler panel_config.json existente; vou recriar mantendo defaults: $($_.Exception.Message)"
+  }
+}
 Copy-Item -LiteralPath $panelSource -Destination (Join-Path $PanelDir "whatsapp_mcp_panel.py") -Force
 if (Test-Path $profilesPanelSource) {
   Copy-Item -LiteralPath $profilesPanelSource -Destination (Join-Path $PanelDir "whatsapp_profiles_panel.py") -Force
@@ -44,14 +56,31 @@ $configMap = [ordered]@{
   random_sync_max_minutes = 50
 }
 if ($ProfilesMode) {
+  $profilesConfigPath = Join-Path $ProfilesDir "profiles.json"
+  $baseConfirmed = $false
+  if ($existingPanelConfig -and ($existingPanelConfig.PSObject.Properties.Name -contains "profiles_base_confirmed")) {
+    $baseConfirmed = [bool]$existingPanelConfig.profiles_base_confirmed
+  }
+  if (-not $baseConfirmed -and (Test-Path $profilesConfigPath)) {
+    try {
+      $profilesRaw = Get-Content -Raw -LiteralPath $profilesConfigPath
+      if ($profilesRaw.Trim()) {
+        $profilesData = $profilesRaw | ConvertFrom-Json
+        $baseConfirmed = (@($profilesData.profiles).Count -gt 0) -or (@($profilesData.projects).Count -gt 0)
+      }
+    } catch {
+      $baseConfirmed = $false
+    }
+  }
   $configMap["profiles_mode"] = $true
   $configMap["profiles_dir"] = $ProfilesDir
-  $configMap["profiles_config"] = (Join-Path $ProfilesDir "profiles.json")
+  $configMap["profiles_config"] = $profilesConfigPath
   $configMap["initial_sync_hours"] = 24
   $configMap["control_port"] = 18763
+  $configMap["profiles_base_confirmed"] = $baseConfirmed
 }
 $config = $configMap | ConvertTo-Json -Depth 3
-$config | Set-Content -LiteralPath (Join-Path $PanelDir "panel_config.json") -Encoding UTF8
+$config | Set-Content -LiteralPath $panelConfigPath -Encoding UTF8
 
 $uv = "$env:USERPROFILE\.local\bin\uv.exe"
 if (-not (Test-Path $uv)) { $uv = "uv" }

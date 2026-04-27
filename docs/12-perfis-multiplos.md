@@ -79,6 +79,8 @@ O comando instala o painel, compila a bridge de perfis, cria o atalho e registra
 10. Quando aparecer autenticado, clique em **Voltar ao painel**.
 11. O perfil segue sincronizando em background.
 
+Se o perfil ja estiver autenticado, o botao **Conectar QR** nao abre outro QR. Ele avisa que a sessao ja existe; se a bridge estiver fechada, inicia uma sincronizacao manual.
+
 Para outro numero, clique em **Adicionar outro perfil** e repita.
 
 ## Projetos

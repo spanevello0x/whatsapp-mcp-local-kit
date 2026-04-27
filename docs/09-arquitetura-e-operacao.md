@@ -54,6 +54,8 @@ AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.
 8. O servidor MCP `whatsapp-profiles` consulta os bancos locais.
 9. Codex/Claude so recebem conteudo quando uma consulta MCP pede dados.
 
+O componente WhatsApp e baseado em **whatsmeow** em Go. Nao e Baileys.
+
 Com a porta fechada, pesquisas continuam funcionando porque leem `messages.db` direto. A bridge precisa abrir para QR, sincronizacao e download de midia fisica.
 
 ## Dados Locais

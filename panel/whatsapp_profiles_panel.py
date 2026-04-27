@@ -217,6 +217,22 @@ def set_profiles_base_dir(base_dir: str | Path) -> None:
             pass
 
 
+def mark_base_confirmed_if_existing() -> bool:
+    if CONFIG.get("profiles_base_confirmed"):
+        return True
+    if PROFILES_CONFIG.exists():
+        try:
+            raw = PROFILES_CONFIG.read_text(encoding="utf-8-sig")
+            data = json.loads(raw) if raw.strip() else {}
+            if data.get("profiles") or data.get("projects"):
+                CONFIG["profiles_base_confirmed"] = True
+                save_panel_config(CONFIG)
+                return True
+        except (OSError, json.JSONDecodeError):
+            pass
+    return False
+
+
 def action_log(message: str) -> None:
     try:
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1483,7 +1499,7 @@ class ProfilesApp:
         win.focus_force()
 
     def ensure_base_folder_confirmed(self) -> None:
-        if not CONFIG.get("profiles_base_confirmed"):
+        if not mark_base_confirmed_if_existing():
             self.open_base_setup(first_time=True)
 
     def open_base_folder(self) -> None:
@@ -1575,8 +1591,25 @@ class ProfilesApp:
             return
         state = self.state_for(profile["slug"])
         if self.session_ready(profile, state):
-            self.last_action = f"{profile.get('name')} ja esta autenticado."
-            self.start_sync(profile, manual=True)
+            if profile_running(profile):
+                self.last_action = f"{profile.get('name')} ja esta autenticado e ja esta sincronizando."
+                mb.showinfo(
+                    "QR ja conectado",
+                    (
+                        f"{profile.get('name')} ja esta autenticado e a bridge deste perfil esta aberta.\n\n"
+                        "Nao precisa reconectar QR. Para trocar ou invalidar a sessao, remova este aparelho em Aparelhos conectados no WhatsApp do celular."
+                    ),
+                )
+            else:
+                self.last_action = f"{profile.get('name')} ja esta autenticado; sync manual iniciada."
+                mb.showinfo(
+                    "QR ja conectado",
+                    (
+                        f"{profile.get('name')} ja esta autenticado.\n\n"
+                        "Nao precisa reconectar QR. Vou iniciar uma sincronizacao agora. Para trocar ou invalidar a sessao, remova este aparelho em Aparelhos conectados no WhatsApp do celular."
+                    ),
+                )
+                self.start_sync(profile, manual=True)
             self.refresh()
             return
         state.pop("authenticated_at", None)
