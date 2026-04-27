@@ -1,98 +1,147 @@
 # 10 - MacBook / macOS
 
-O core da bridge funciona em macOS, mas o fluxo de producao com painel de **varios perfis**, projetos, bandeja e auto-start esta focado em Windows nesta versao.
+O macOS agora tem um caminho proprio para o **modo perfis**: varios numeros, projetos, base SQLite separada, painel Tkinter, icone na Mesa/Desktop, menu bar via `pystray`, LaunchAgent para iniciar com o login e MCP `whatsapp-profiles`.
 
-No macOS, o kit ainda documenta o fluxo legado de um numero. Para varios perfis no Mac, trate como adaptacao futura ou rode o fluxo Windows em uma maquina Windows dedicada.
+Ainda assim, o macOS deve ser tratado como **suporte beta** ate ser validado em um Mac real. A bridge core e multiplataforma, mas detalhes de permissao, Homebrew, Python/Tk e EDR corporativo variam bastante por maquina.
 
-No macOS, a "bandeja" equivale ao menu bar. O auto-start e feito por LaunchAgent em:
-
-```text
-~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
-```
-
-## Instalacao rapida
+## Instalacao recomendada
 
 ```bash
 git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
 cd whatsapp-mcp-local-kit
 chmod +x scripts/*.sh
-./scripts/bootstrap-macos.sh --install-missing-dependencies --patch-localhost --configure-all-mcp
+./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
 ```
 
-Se ainda nao houver sessao autenticada:
+O bootstrap acima instala o modo perfis por padrao.
+
+Se quiser apenas verificar dependencias antes de instalar:
 
 ```bash
-./scripts/first-login-macos.sh
+./scripts/install-dependencies-macos.sh
 ```
-
-Escaneie o QR no WhatsApp do celular em `Dispositivos conectados`.
 
 ## Dependencias
 
-O script usa:
+O script espera:
 
-- Xcode Command Line Tools
-- Homebrew
-- Git
-- Go
-- Python 3
-- uv
-- clang
+- Xcode Command Line Tools;
+- Homebrew, quando for instalar dependencias automaticamente;
+- Git;
+- Go;
+- Python 3.11+ com Tkinter funcionando;
+- uv;
+- clang.
 
-Se o Homebrew nao estiver instalado, instale por https://brew.sh/ e rode novamente.
+Se o Xcode Command Line Tools nao existir, o script chama `xcode-select --install` e para. Depois de concluir a instalacao da Apple, rode o bootstrap de novo.
 
 ## Caminhos padrao
 
 ```text
-~/WhatsApp-MCP/whatsapp-mcp
 ~/Documents/WhatsApp MCP Panel
+~/Documents/WhatsApp MCP Profiles
+~/Documents/WhatsApp MCP Profiles/bin/whatsapp-bridge
+~/Desktop/WhatsApp MCP Tray.app
 ~/Desktop/WhatsApp MCP Tray.command
 ~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
 ```
 
-O painel gera icones em:
+Estrutura da base:
 
 ```text
-~/Documents/WhatsApp MCP Panel/whatsapp-mcp-icon.png
-~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-running.png
-~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-waiting.png
-~/Documents/WhatsApp MCP Panel/whatsapp-mcp-tray-stopped.png
+~/Documents/WhatsApp MCP Profiles/
+  profiles.json
+  profiles_state.json
+  bin/
+    whatsapp-bridge
+  projetos/
+    Vendedores/
+      vendedor-joao/
+        whatsapp-bridge/
+          store/
+            whatsapp.db
+            messages.db
+        bridge.out.log
+        bridge.err.log
 ```
 
-## Claude Desktop no macOS
+## Primeiro uso
 
-Arquivo:
+1. Abra `WhatsApp MCP Tray.app` na Mesa/Desktop. Use `WhatsApp MCP Tray.command` apenas como fallback tecnico.
+2. Se for a primeira abertura, escolha a pasta geral das bases.
+3. Cadastre um projeto e um perfil.
+4. Clique em **Conectar QR** no perfil selecionado.
+5. Escaneie pelo WhatsApp do celular.
+6. Clique em **Voltar ao painel**.
+7. Pode ocultar a janela; o menu bar/LaunchAgent mantem o painel ativo enquanto o Mac estiver logado.
+
+## Auto-start no macOS
+
+O auto-start usa LaunchAgent:
+
+```text
+~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
+```
+
+O botao **Auto-start** da UI tambem consegue ativar/desativar esse arquivo no macOS. Se o Mac estiver em ambiente corporativo, um EDR pode bloquear a criacao ou o carregamento do LaunchAgent; nesse caso, a liberacao precisa ser feita pelo admin.
+
+## MCP no Codex e Claude
+
+O bootstrap com `--configure-all-mcp` registra o servidor:
+
+```text
+whatsapp-profiles
+```
+
+No Claude Desktop macOS, o arquivo alterado e:
 
 ```text
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-O script `scripts/configure-mcp-macos.sh --claude` faz backup e adiciona o servidor `whatsapp`.
-
-## Codex no macOS
+Para configurar manualmente:
 
 ```bash
-./scripts/configure-mcp-macos.sh --codex
-codex mcp list
+./scripts/configure-profiles-mcp-macos.sh --all
 ```
-
-## Antiviruses e seguranca no macOS
-
-Nao desative Gatekeeper, XProtect, Defender for Endpoint, CrowdStrike, SentinelOne ou outro EDR globalmente.
-
-Se precisar liberar excecoes, prefira estes caminhos:
-
-```text
-~/WhatsApp-MCP/whatsapp-mcp
-~/Documents/WhatsApp MCP Panel
-```
-
-Em ambientes corporativos, a liberacao pode depender do admin de TI.
 
 ## Verificacao
 
 ```bash
-./scripts/verify-local-macos.sh
+./scripts/verify-profiles-macos.sh
 ```
 
-O verificador checa runtimes, bridge, bancos, binario, painel, LaunchAgent, porta local e estatisticas SQLite.
+Esse verificador checa arquivos principais, runtimes, painel, LaunchAgent, perfis, portas, sessoes, bancos SQLite e se o MCP consegue carregar `list_profiles`.
+
+## Antivirus, Gatekeeper e EDR
+
+Nao desative Gatekeeper, XProtect, Defender for Endpoint, CrowdStrike, SentinelOne ou outro EDR globalmente.
+
+Se precisar liberar excecoes, prefira caminhos pontuais:
+
+```text
+~/Documents/WhatsApp MCP Panel
+~/Documents/WhatsApp MCP Profiles
+<pasta onde voce clonou o repositorio>
+```
+
+O motivo: o painel cria um ambiente Python local, compila um binario Go local e cria um LaunchAgent para iniciar com o macOS. Isso parece automacao para alguns antiviruses/EDRs, mas nao exige liberar `python`, `bash`, `go` ou `launchctl` globalmente.
+
+## Limites atuais no Mac
+
+- Precisa de validacao final em um Mac real.
+- O icone fica no menu bar, nao na bandeja do Windows.
+- O QR continua manual.
+- Downloads de midia fisica exigem a bridge daquele perfil aberta.
+- Se Python/Tkinter vier quebrado na instalacao local, instale Python via Homebrew ou python.org e rode o bootstrap novamente.
+
+## Fluxo legado de um numero
+
+O modo antigo de um numero ainda existe para compatibilidade:
+
+```bash
+./scripts/bootstrap-macos.sh --legacy-single-profile --install-missing-dependencies --patch-localhost --configure-all-mcp
+./scripts/first-login-macos.sh
+```
+
+Para novos usuarios, prefira o modo perfis.

@@ -26,8 +26,9 @@ O fluxo de producao recomendado hoje e o **modo perfis**:
 ## O Que Este Kit Entrega
 
 - Bootstrap Windows para preparar dependencias, compilar a bridge e instalar o painel.
-- Painel local em Python/Tkinter com icone no Desktop e bandeja.
-- Auto-start opcional para abrir minimizado com o Windows.
+- Bootstrap macOS em modo perfis beta para MacBook.
+- Painel local em Python/Tkinter com icone no Desktop/Mesa e bandeja/menu bar.
+- Auto-start opcional para abrir minimizado com o Windows ou macOS.
 - Cadastro de perfis por projeto.
 - QR Code sob demanda por perfil.
 - Identificacao do numero pelo QR quando a bridge retorna o JID do WhatsApp.
@@ -77,6 +78,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
 Depois abra o icone **WhatsApp MCP Tray** na area de trabalho.
+
+## Instalacao Rapida No MacBook / macOS
+
+No macOS o modo perfis tambem e o fluxo recomendado, mas ainda deve ser tratado como **beta ate validacao em um Mac real**:
+
+```bash
+git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
+cd whatsapp-mcp-local-kit
+chmod +x scripts/*.sh
+./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
+```
+
+Valide:
+
+```bash
+./scripts/verify-profiles-macos.sh
+```
+
+Depois abra **WhatsApp MCP Tray.app** na Mesa/Desktop. O arquivo `.command` tambem existe como fallback tecnico. Veja [docs/10-macos.md](docs/10-macos.md).
 
 ## Primeiro Uso
 
@@ -188,7 +208,7 @@ No perfil vendedor-joao, liste PDFs, imagens, audios e links do telefone +55 (11
 - [docs/03-mcp-codex-claude.md](docs/03-mcp-codex-claude.md): configuracao MCP.
 - [docs/04-seguranca.md](docs/04-seguranca.md): privacidade e exposicao local.
 - [docs/05-troubleshooting.md](docs/05-troubleshooting.md): erros comuns.
-- [docs/10-macos.md](docs/10-macos.md): notas para macOS.
+- [docs/10-macos.md](docs/10-macos.md): instalacao e limites no MacBook/macOS.
 - [docs/12-perfis-multiplos.md](docs/12-perfis-multiplos.md): detalhes do modo perfis.
 
 ## Licenca E Origem

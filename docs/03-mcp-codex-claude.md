@@ -16,10 +16,22 @@ Durante o bootstrap:
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 ```
 
+No macOS:
+
+```bash
+./scripts/bootstrap-macos.sh --configure-all-mcp
+```
+
 Ou manualmente:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\configure-profiles-mcp.ps1 -All
+```
+
+No macOS:
+
+```bash
+./scripts/configure-profiles-mcp-macos.sh --all
 ```
 
 Escolha apenas um cliente:
@@ -103,4 +115,10 @@ Baixar uma midia fisica com `download_profile_media` exige a bridge do perfil ab
 
 ## macOS
 
-O modo perfis com painel de bandeja e auto-start esta focado em Windows. Para macOS, veja `docs/10-macos.md`, que descreve o fluxo legado de um numero e notas de adaptacao.
+No macOS o arquivo do Claude Desktop fica em:
+
+```text
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+O modo perfis para macOS esta em beta ate validacao em Mac real. Veja `docs/10-macos.md`.

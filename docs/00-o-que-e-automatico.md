@@ -6,12 +6,12 @@ O fluxo principal de producao e o **modo perfis**. Ele permite cadastrar varios 
 
 ## O Que O Bootstrap Pode Fazer
 
-- Verificar se Git, Go, Python, uv e GCC/MSYS2 existem.
-- Tentar instalar dependencias faltantes via `winget`, se voce usar `-InstallMissingDependencies`.
+- Verificar se Git, Go, Python, uv e o compilador nativo existem. No Windows isso envolve GCC/MSYS2; no macOS, Xcode Command Line Tools/clang.
+- Tentar instalar dependencias faltantes via `winget` no Windows ou Homebrew no macOS, se voce autorizar.
 - Compilar a bridge Go vendorizada.
 - Instalar o painel em `Documents\WhatsApp MCP Panel`.
-- Criar icone no Desktop.
-- Criar auto-start para abrir o painel minimizado na bandeja.
+- Criar icone no Desktop/Mesa.
+- Criar auto-start para abrir o painel minimizado na bandeja/menu bar.
 - Criar a pasta geral das bases, por padrao `Documents\WhatsApp MCP Profiles`.
 - Instalar a bridge compartilhada em `Documents\WhatsApp MCP Profiles\bin`.
 - Registrar o MCP `whatsapp-profiles` no Codex e/ou Claude Desktop, se voce usar `-ConfigureAllMcp`.
@@ -36,7 +36,7 @@ Depois do bootstrap:
 
 - O icone **WhatsApp MCP Tray** aparece na area de trabalho.
 - O painel abre sem janela preta permanente.
-- O painel pode ficar minimizado na bandeja.
+- O painel pode ficar minimizado na bandeja/menu bar.
 - O usuario escolhe uma pasta geral para as bases.
 - Cada perfil fica em uma pasta separada por projeto.
 - Cada perfil tem sessao e `messages.db` proprios.
@@ -53,4 +53,11 @@ Com instalacao de dependencias via `winget`, se o usuario autorizar:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp -InstallMissingDependencies
+```
+
+No MacBook/macOS:
+
+```bash
+chmod +x scripts/*.sh
+./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
 ```

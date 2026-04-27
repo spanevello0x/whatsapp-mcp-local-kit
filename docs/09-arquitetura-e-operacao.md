@@ -2,7 +2,7 @@
 
 Este kit instala um conjunto local de componentes para WhatsApp + MCP.
 
-O fluxo principal e Windows em modo perfis. O macOS ainda tem guia separado em `docs/10-macos.md`.
+O fluxo principal e o modo perfis. Windows e o caminho mais validado; macOS tem suporte beta documentado em `docs/10-macos.md`.
 
 ## Componentes Do Repositorio
 
@@ -21,18 +21,21 @@ Painel:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
+~/Documents/WhatsApp MCP Panel
 ```
 
 Bases:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
+~/Documents/WhatsApp MCP Profiles
 ```
 
 Bridge compartilhada:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles\bin\whatsapp-bridge.exe
+~/Documents/WhatsApp MCP Profiles/bin/whatsapp-bridge
 ```
 
 Atalhos:
@@ -40,6 +43,9 @@ Atalhos:
 ```text
 Desktop\WhatsApp MCP Tray.lnk
 AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+~/Desktop/WhatsApp MCP Tray.app
+~/Desktop/WhatsApp MCP Tray.command
+~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
 ```
 
 ## Como Funciona
@@ -74,7 +80,7 @@ Esses arquivos nunca devem ser publicados.
 
 ## Bandeja E Auto-start
 
-O atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. Quando oculto, ele fica na bandeja.
+No Windows, o atalho usa `pythonw.exe`, entao o painel abre sem terminal preto. No macOS, o launcher usa o Python do venv e o auto-start usa LaunchAgent. Quando oculto, ele fica na bandeja/menu bar.
 
 O icone muda de status:
 
@@ -112,6 +118,12 @@ Depois de instalar:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+```
+
+No macOS:
+
+```bash
+./scripts/verify-profiles-macos.sh
 ```
 
 O script checa painel, atalhos, auto-start, bridge, config MCP e bases locais.

@@ -16,18 +16,18 @@ Objetivo:
 Regras obrigatorias:
 - Comece lendo README.md, COMECE_AQUI.md, docs/00-o-que-e-automatico.md, docs/02-antivirus.md e docs/12-perfis-multiplos.md.
 - Diagnostique o ambiente antes de alterar qualquer coisa.
-- Mostre se Git, Python, uv, Go e GCC/MSYS2 estao disponiveis.
+- Mostre se Git, Python, uv e Go estao disponiveis. No Windows, confira GCC/MSYS2. No macOS, confira Xcode Command Line Tools e clang.
 - Antes de instalar dependencias, criar atalhos, configurar MCP ou rodar build, explique o que sera feito e por que.
 - Se existir whatsapp.db ou messages.db, faca backup antes de qualquer reinstalacao.
 - Nao apague bancos .db, logs ou pastas de perfil sem minha confirmacao explicita.
-- Nao crie excecao global para powershell.exe, cmd.exe, wscript.exe, python.exe ou go.exe.
+- Nao crie excecao global para powershell.exe, cmd.exe, wscript.exe, python.exe, bash, go.exe/go ou launchctl.
 - Para antivirus, diga exatamente quais pastas/arquivos liberar e espere eu confirmar.
 - Se o antivirus colocar arquivo em quarentena, oriente restaurar somente se o caminho estiver dentro das pastas esperadas.
 - Operacoes de envio de mensagem no WhatsApp precisam de confirmacao explicita.
 - Prefira bridge acessivel apenas em 127.0.0.1.
 - Ao final, valide com operacoes read-only.
 
-Passos esperados:
+Passos esperados no Windows:
 1. Confirmar o diretorio do repositorio.
 2. Confirmar que o repositorio nao contem .db, QR, logs sensiveis ou tokens versionados.
 3. Conferir dependencias.
@@ -45,6 +45,23 @@ Passos esperados:
 13. Rodar:
     powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 14. Entregar um resumo com caminhos, nome do MCP, como pausar, sincronizar, remover perfil, abrir pasta do projeto e copiar DB.
+
+Passos esperados no MacBook/macOS:
+1. Confirmar o diretorio do repositorio.
+2. Confirmar que o repositorio nao contem .db, QR, logs sensiveis ou tokens versionados.
+3. Conferir Git, Python 3.11+, uv, Go, Xcode Command Line Tools e clang.
+4. Orientar excecoes/permissoes pontuais antes de compilar/rodar.
+5. Rodar:
+   chmod +x scripts/*.sh
+   ./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
+6. Abrir o painel pelo app WhatsApp MCP Tray.app na Mesa/Desktop. Usar o arquivo .command apenas como fallback tecnico.
+7. Na primeira abertura, orientar a escolha da pasta geral das bases.
+8. Cadastrar perfis por projeto e abrir QR somente no perfil correto.
+9. Confirmar que depois do QR o painel mostra status de sync inteligente.
+10. Confirmar que o LaunchAgent de auto-start existe ou orientar ativacao pelo painel.
+11. Rodar:
+    ./scripts/verify-profiles-macos.sh
+12. Entregar um resumo com caminhos, nome do MCP, como pausar, sincronizar, remover perfil, abrir pasta do projeto e copiar DB.
 ```
 
 ## Comando Principal
@@ -65,6 +82,14 @@ Validacao:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+```
+
+MacBook/macOS:
+
+```bash
+chmod +x scripts/*.sh
+./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
+./scripts/verify-profiles-macos.sh
 ```
 
 ## O Que A IA Deve Explicar Ao Usuario

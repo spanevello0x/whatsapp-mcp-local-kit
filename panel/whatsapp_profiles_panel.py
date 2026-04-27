@@ -30,6 +30,8 @@ CONFIG_PATH = PANEL_DIR / "panel_config.json"
 ACTION_LOG = PANEL_DIR / "panel-actions.log"
 STACK_DUMP = PANEL_DIR / "panel-stack-dump.log"
 DEFAULT_PROFILES_DIR = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents" / "WhatsApp MCP Profiles"
+IS_WINDOWS = os.name == "nt"
+IS_MAC = sys.platform == "darwin"
 POLL_MS = 5000
 CONTROL_HOST = "127.0.0.1"
 ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
@@ -95,9 +97,11 @@ STARTUP_DIR = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "S
 STARTUP_SHORTCUT = STARTUP_DIR / "WhatsApp MCP Tray.lnk"
 LEGACY_STARTUP_SHORTCUT = STARTUP_DIR / "WhatsApp MCP Painel.lnk"
 PANEL_RUNTIME_VENV = PANEL_DIR / ".venv-user" if (PANEL_DIR / ".venv-user").exists() else PANEL_DIR / ".venv"
-PANEL_VENV_PYTHONW = PANEL_RUNTIME_VENV / "Scripts" / "pythonw.exe"
+PANEL_VENV_PYTHONW = PANEL_RUNTIME_VENV / "Scripts" / "pythonw.exe" if IS_WINDOWS else PANEL_RUNTIME_VENV / "bin" / "python"
 PANEL_LAUNCHER = PANEL_DIR / "launch_panel.py"
-PANEL_ICON = PANEL_DIR / "whatsapp-mcp-icon.ico"
+PANEL_ICON = PANEL_DIR / ("whatsapp-mcp-icon.ico" if IS_WINDOWS else "whatsapp-mcp-icon.png")
+MAC_LAUNCH_AGENT_DIR = Path.home() / "Library" / "LaunchAgents"
+MAC_LAUNCH_AGENT = MAC_LAUNCH_AGENT_DIR / "com.whatsapp-mcp.tray.plist"
 
 INITIAL_SYNC_HOURS = int(CONFIG.get("initial_sync_hours", 24))
 INITIAL_SYNC_MIN_SECONDS = int(CONFIG.get("initial_sync_min_minutes", 60)) * 60
@@ -654,10 +658,10 @@ def load_wscript_shell():
 
 def panel_pythonw_path() -> Path:
     running_python = Path(sys.executable)
-    if running_python.exists() and running_python.name.lower() == "pythonw.exe":
+    if running_python.exists() and (not IS_WINDOWS or running_python.name.lower() == "pythonw.exe"):
         return running_python
     pyvenv_cfg = PANEL_RUNTIME_VENV / "pyvenv.cfg"
-    if pyvenv_cfg.exists():
+    if IS_WINDOWS and pyvenv_cfg.exists():
         try:
             for line in pyvenv_cfg.read_text(encoding="utf-8-sig").splitlines():
                 if line.lower().startswith("home"):
@@ -691,8 +695,12 @@ def is_expected_autostart(info: dict) -> bool:
 
 
 def autostart_state() -> tuple[str, str]:
-    if os.name != "nt":
-        return "unsupported", "Auto-start automatico nesta UI esta disponivel apenas no Windows."
+    if IS_MAC:
+        if MAC_LAUNCH_AGENT.exists():
+            return "on", "Ativo: existe LaunchAgent para iniciar o painel com o macOS."
+        return "off", "Desativado: o painel nao inicia automaticamente com o macOS."
+    if not IS_WINDOWS:
+        return "unsupported", "Auto-start automatico nesta UI esta disponivel apenas em Windows e macOS."
     tray = read_shortcut(STARTUP_SHORTCUT)
     legacy = read_shortcut(LEGACY_STARTUP_SHORTCUT)
     if tray.get("exists"):
@@ -702,9 +710,71 @@ def autostart_state() -> tuple[str, str]:
     return "off", "Desativado: o painel nao inicia automaticamente com o Windows."
 
 
+def write_mac_launch_agent(python_bin: Path) -> None:
+    MAC_LAUNCH_AGENT_DIR.mkdir(parents=True, exist_ok=True)
+    out_log = PANEL_DIR / "launchagent.out.log"
+    err_log = PANEL_DIR / "launchagent.err.log"
+    plist = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.whatsapp-mcp.tray</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{python_bin}</string>
+    <string>{PANEL_LAUNCHER}</string>
+    <string>--minimized</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{PANEL_DIR}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>{out_log}</string>
+  <key>StandardErrorPath</key>
+  <string>{err_log}</string>
+</dict>
+</plist>
+"""
+    MAC_LAUNCH_AGENT.write_text(plist, encoding="utf-8")
+
+
+def reload_mac_launch_agent() -> None:
+    domain = f"gui/{os.getuid()}"
+    subprocess.run(["launchctl", "bootout", domain, str(MAC_LAUNCH_AGENT)], capture_output=True, text=True, timeout=5)
+    subprocess.run(["launchctl", "bootstrap", domain, str(MAC_LAUNCH_AGENT)], capture_output=True, text=True, timeout=5)
+    subprocess.run(["launchctl", "enable", f"{domain}/com.whatsapp-mcp.tray"], capture_output=True, text=True, timeout=5)
+
+
 def set_autostart_enabled(enabled: bool) -> tuple[bool, str]:
-    if os.name != "nt":
-        return False, "Auto-start automatico nesta UI esta disponivel apenas no Windows."
+    if IS_MAC:
+        try:
+            if enabled:
+                python_bin = panel_pythonw_path()
+                if not python_bin.exists():
+                    return False, f"Python do painel nao encontrado: {python_bin}"
+                if not PANEL_LAUNCHER.exists():
+                    return False, f"Launcher do painel nao encontrado: {PANEL_LAUNCHER}"
+                write_mac_launch_agent(python_bin)
+                try:
+                    reload_mac_launch_agent()
+                except Exception:
+                    pass
+                return True, "Auto-start ativado. O painel vai iniciar minimizado com o macOS."
+            if MAC_LAUNCH_AGENT.exists():
+                try:
+                    subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}", str(MAC_LAUNCH_AGENT)], capture_output=True, text=True, timeout=5)
+                except Exception:
+                    pass
+                MAC_LAUNCH_AGENT.unlink()
+            return True, "Auto-start desativado."
+        except Exception as exc:
+            return False, f"Nao consegui alterar o auto-start no macOS: {exc}"
+    if not IS_WINDOWS:
+        return False, "Auto-start automatico nesta UI esta disponivel apenas em Windows e macOS."
     try:
         STARTUP_DIR.mkdir(parents=True, exist_ok=True)
         shell = load_wscript_shell()
@@ -2095,15 +2165,16 @@ class ProfilesApp:
 
     def toggle_autostart(self) -> None:
         state, message = autostart_state()
+        system_name = "Windows" if IS_WINDOWS else "macOS" if IS_MAC else "sistema"
         if state == "on":
-            if not mb.askyesno("Auto-start", "Desativar inicializacao automatica do painel com o Windows?"):
+            if not mb.askyesno("Auto-start", f"Desativar inicializacao automatica do painel com o {system_name}?"):
                 return
             ok, result = set_autostart_enabled(False)
         else:
             detail = message
             if state == "review":
                 detail += "\n\nVou tentar substituir atalhos antigos pelo atalho correto."
-            if not mb.askyesno("Auto-start", f"Ativar inicializacao automatica do painel com o Windows?\n\n{detail}"):
+            if not mb.askyesno("Auto-start", f"Ativar inicializacao automatica do painel com o {system_name}?\n\n{detail}"):
                 return
             ok, result = set_autostart_enabled(True)
         self.last_action = result

@@ -20,6 +20,14 @@ C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 
 Se o repositorio for clonado em outro local, libere a pasta real do clone.
 
+No macOS, nao desative Gatekeeper/XProtect/EDR. Se precisar liberar, use excecoes pontuais:
+
+```text
+~/Documents/WhatsApp MCP Panel
+~/Documents/WhatsApp MCP Profiles
+<pasta real onde voce clonou o repositorio>
+```
+
 ## Prompt Para Colar Na IA
 
 Cole o texto abaixo em uma conversa nova do Codex ou Claude com acesso ao computador.
@@ -56,6 +64,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -Profil
 
 Validacao final:
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
+
+Comando esperado no MacBook/macOS, depois do diagnostico e das excecoes/permissoes:
+chmod +x scripts/*.sh
+./scripts/bootstrap-macos.sh --install-missing-dependencies --configure-all-mcp
+
+Validacao final no macOS:
+./scripts/verify-profiles-macos.sh
 
 Depois da instalacao:
 - Abra o icone WhatsApp MCP Tray.

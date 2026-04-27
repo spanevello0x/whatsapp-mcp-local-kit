@@ -16,6 +16,9 @@ python.exe
 pythonw.exe
 go.exe
 gcc.exe
+bash
+go
+launchctl
 ```
 
 Tambem nao desative o antivirus inteiro. A liberacao deve ser pontual.
@@ -138,9 +141,10 @@ No macOS, nao desative Gatekeeper, XProtect, Defender for Endpoint, CrowdStrike,
 Se precisar liberar excecoes, prefira apenas:
 
 ```text
-~/whatsapp-mcp-local-kit
+<pasta real onde voce clonou o repositorio>
 ~/Documents/WhatsApp MCP Panel
 ~/Documents/WhatsApp MCP Profiles
+~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
 ```
 
 Em Mac corporativo, a liberacao pode depender do administrador de TI.

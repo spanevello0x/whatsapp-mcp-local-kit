@@ -6,6 +6,12 @@
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
+No macOS:
+
+```bash
+./scripts/verify-profiles-macos.sh
+```
+
 Esse verificador confere painel, atalhos, auto-start, bridge de perfis, config MCP e bases locais.
 
 ## `spawn uv ENOENT`
@@ -38,6 +44,8 @@ Argumento esperado:
 
 Se existir um atalho antigo `WhatsApp MCP Painel.lnk`, prefira `WhatsApp MCP Tray.lnk`.
 
+No macOS, prefira `~/Desktop/WhatsApp MCP Tray.app`, que abre sem Terminal. O arquivo `~/Desktop/WhatsApp MCP Tray.command` fica como fallback tecnico e chama `~/Documents/WhatsApp MCP Panel/.venv/bin/python` com `launch_panel.py`.
+
 ## Bandeja Nao Abre O Painel
 
 1. Tente abrir novamente pelo icone do Desktop.
@@ -47,6 +55,12 @@ Se existir um atalho antigo `WhatsApp MCP Painel.lnk`, prefira `WhatsApp MCP Tra
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-panel.ps1 -ProfilesMode
+```
+
+No macOS:
+
+```bash
+./scripts/install-panel-macos.sh --profiles-mode
 ```
 
 ## Auto-start Pendente
@@ -73,6 +87,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
 Tambem e possivel ativar/desativar auto-start pelo botao **Configuracoes** no painel.
+
+No macOS, o auto-start fica em:
+
+```text
+~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist
+```
 
 ## QR Nao Aparece
 

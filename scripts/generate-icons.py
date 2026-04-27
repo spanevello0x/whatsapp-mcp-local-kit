@@ -56,6 +56,10 @@ def main() -> int:
     base = make_icon(256, "idle")
     base.save(out_dir / "whatsapp-mcp-icon.png")
     base.save(out_dir / "whatsapp-mcp-icon.ico", sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
+    try:
+        base.save(out_dir / "whatsapp-mcp-icon.icns")
+    except Exception:
+        pass
 
     for status in ("running", "waiting", "stopped"):
         make_icon(64, status).save(out_dir / f"whatsapp-mcp-tray-{status}.png")
@@ -65,4 +69,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

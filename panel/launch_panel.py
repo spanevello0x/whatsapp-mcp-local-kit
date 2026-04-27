@@ -8,10 +8,11 @@ from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent
-VENV_SITES = [
-    BASE_DIR / ".venv-user" / "Lib" / "site-packages",
-    BASE_DIR / ".venv" / "Lib" / "site-packages",
-]
+VENV_SITES = []
+for venv_name in (".venv-user", ".venv"):
+    venv = BASE_DIR / venv_name
+    VENV_SITES.append(venv / "Lib" / "site-packages")
+    VENV_SITES.append(venv / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages")
 CONFIG = BASE_DIR / "panel_config.json"
 DEFAULT_PANEL = BASE_DIR / "whatsapp_mcp_panel.py"
 PROFILES_PANEL = BASE_DIR / "whatsapp_profiles_panel.py"
