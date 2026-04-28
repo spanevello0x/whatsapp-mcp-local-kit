@@ -225,6 +225,7 @@ STARTUP_RESUME_STAGGER_SECONDS = int(CONFIG.get("startup_resume_stagger_seconds"
 STARTUP_RESUME_JITTER_SECONDS = int(CONFIG.get("startup_resume_jitter_seconds", 45))
 STARTUP_RESUME_MIN_INTERVAL_SECONDS = int(CONFIG.get("startup_resume_min_interval_minutes", 5)) * 60
 QR_AUTH_AUTO_RETURN_MS = int(CONFIG.get("qr_auth_auto_return_seconds", 3)) * 1000
+STARTUP_RESUME_CLEAR_PAUSED = str(CONFIG.get("startup_resume_clear_paused", True)).strip().lower() not in {"0", "false", "no", "off"}
 
 
 def now_iso() -> str:
@@ -431,8 +432,15 @@ def phone_digits(value: str) -> str:
     return re.sub(r"\D", "", value or "")
 
 
-def format_phone_number(value: str) -> str:
+def normalize_phone_digits(value: str) -> str:
     digits = phone_digits(value)
+    if digits.startswith("55") and len(digits) == 12 and digits[4:5] == "9":
+        return digits[:4] + "9" + digits[4:]
+    return digits
+
+
+def format_phone_number(value: str) -> str:
+    digits = normalize_phone_digits(value)
     if not digits:
         return ""
     if digits.startswith("55") and len(digits) >= 12:
@@ -449,21 +457,47 @@ def format_phone_number(value: str) -> str:
 
 
 def jid_to_phone(value: str) -> str:
-    user = (value or "").split("@", 1)[0].split(":", 1)[0]
-    return format_phone_number(user)
+    local = (value or "").split("@", 1)[0].strip()
+    local = local.split(":", 1)[0]
+    return format_phone_number(local)
+
+
+def detected_number_should_replace(profile: dict, detected: str) -> bool:
+    detected_digits = phone_digits(detected)
+    existing_digits = phone_digits(profile.get("number") or "")
+    if not detected_digits:
+        return False
+    if not existing_digits:
+        return True
+    if existing_digits == detected_digits:
+        return False
+    if existing_digits.startswith("55"):
+        for suffix_len in range(1, 5):
+            if len(existing_digits) > suffix_len and normalize_phone_digits(existing_digits[:-suffix_len]) == detected_digits:
+                return True
+    return False
+
+
+def apply_detected_profile_number(profile: dict, detected: str) -> bool:
+    if not detected_number_should_replace(profile, detected):
+        return False
+    profile["number"] = detected
+    profile["number_digits"] = phone_digits(detected)
+    profile["updated_at"] = now_iso()
+    return True
+
+
+def detected_phone_from_log_line(line: str) -> str:
+    if line.startswith("SELF_JID:"):
+        return jid_to_phone(line.split(":", 1)[1].strip())
+    match = re.search(r"Successfully paired\s+([0-9:]+@s\.whatsapp\.net)", line)
+    if match:
+        return jid_to_phone(match.group(1))
+    return ""
 
 
 def should_replace_detected_number(current: str, detected: str) -> bool:
-    current_digits = phone_digits(current)
-    detected_digits = phone_digits(detected)
-    if not detected_digits:
-        return False
-    if not current_digits:
-        return True
-    if current_digits == detected_digits:
-        return False
-    extra_digits = len(current_digits) - len(detected_digits)
-    return current_digits.startswith(detected_digits) and 0 < extra_digits <= 4
+    return detected_number_should_replace({"number": current}, detected)
 
 
 def profile_configured(profile: dict) -> bool:
@@ -578,6 +612,41 @@ def cleanup_unused_autocreated_projects(config: dict) -> None:
     ]
 
 
+def repaired_legacy_brazil_number(value: str) -> str:
+    digits = phone_digits(value)
+    if not digits.startswith("55") or len(digits) <= 13:
+        return ""
+    candidates: list[tuple[int, int, str]] = []
+    for suffix_len in range(1, 5):
+        if len(digits) <= suffix_len:
+            continue
+        candidate = digits[:-suffix_len]
+        normalized = normalize_phone_digits(candidate)
+        if normalized.startswith("55") and len(normalized) == 13:
+            score = 0 if len(candidate) == 12 and candidate[4:5] == "9" else 1
+            candidates.append((score, suffix_len, normalized))
+    if not candidates:
+        return ""
+    _, _suffix_len, normalized = sorted(candidates)[0]
+    return format_phone_number(normalized)
+
+
+def repair_legacy_detected_numbers(config: dict) -> None:
+    for profile in config.get("profiles", []):
+        if profile_is_starter(profile):
+            continue
+        repaired = repaired_legacy_brazil_number(profile.get("number") or profile.get("number_digits") or "")
+        if not repaired:
+            continue
+        repaired_digits = phone_digits(repaired)
+        if phone_digits(profile.get("number") or "") == repaired_digits:
+            continue
+        profile["number"] = repaired
+        profile["number_digits"] = repaired_digits
+        profile["legacy_number_repaired_at"] = now_iso()
+        profile["updated_at"] = now_iso()
+
+
 def ensure_profiles_config() -> dict:
     PROFILES_DIR.mkdir(parents=True, exist_ok=True)
     (PROFILES_DIR / "projetos").mkdir(parents=True, exist_ok=True)
@@ -592,6 +661,7 @@ def ensure_profiles_config() -> dict:
     config.setdefault("profiles", [])
     config.setdefault("projects", [])
     cleanup_unused_autocreated_projects(config)
+    repair_legacy_detected_numbers(config)
     for project in config.get("projects", []):
         ensure_project_folder(config, project)
     for profile in config.get("profiles", []):
@@ -622,11 +692,12 @@ def save_profiles_config(config: dict) -> None:
 def load_state() -> dict:
     PROFILES_DIR.mkdir(parents=True, exist_ok=True)
     if not STATE_PATH.exists():
-        return {"version": 1, "profiles": {}}
+        return {"version": 1, "profiles": {}, "pending_deletes": []}
     raw = STATE_PATH.read_text(encoding="utf-8-sig")
     state = json.loads(raw) if raw.strip() else {}
     state.setdefault("version", 1)
     state.setdefault("profiles", {})
+    state.setdefault("pending_deletes", [])
     return state
 
 
@@ -789,6 +860,58 @@ def stop_profile(profile: dict, wait_seconds: float = 4.0) -> None:
             break
         time.sleep(0.2)
     pid_path.unlink(missing_ok=True)
+
+
+def pending_delete_dir() -> Path:
+    return PROFILES_DIR / "_pending-delete"
+
+
+def unique_pending_delete_path(profile_dir: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    base = pending_delete_dir() / f"{profile_dir.name}-{stamp}"
+    candidate = base
+    index = 2
+    while candidate.exists():
+        candidate = base.with_name(f"{base.name}-{index}")
+        index += 1
+    return candidate
+
+
+def add_pending_delete(state: dict, path: Path, profile_name: str, error: str) -> None:
+    pending = state.setdefault("pending_deletes", [])
+    path_text = str(path)
+    for item in pending:
+        if item.get("path") == path_text:
+            item["last_error"] = error
+            item["updated_at"] = now_iso()
+            return
+    pending.append(
+        {
+            "path": path_text,
+            "profile": profile_name,
+            "created_at": now_iso(),
+            "last_error": error,
+        }
+    )
+
+
+def try_delete_profile_dir(profile_dir: Path, state: dict, profile_name: str) -> tuple[bool, str | None]:
+    if not profile_dir.exists():
+        return True, None
+    try:
+        shutil.rmtree(profile_dir)
+        return True, None
+    except OSError as first_error:
+        cleanup_dir = profile_dir
+        try:
+            target = unique_pending_delete_path(profile_dir)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            profile_dir.rename(target)
+            cleanup_dir = target
+        except OSError:
+            cleanup_dir = profile_dir
+        add_pending_delete(state, cleanup_dir, profile_name, str(first_error))
+        return False, str(first_error)
 
 
 def start_profile(profile: dict, visible: bool = False) -> tuple[bool, str]:
@@ -1586,21 +1709,32 @@ class ProfilesApp:
             return
         now = datetime.now()
         last_resume = parse_iso(self.state.get("last_startup_resume_at"))
-        if last_resume and (now - last_resume).total_seconds() < STARTUP_RESUME_MIN_INTERVAL_SECONDS:
-            return
+        recent_resume = bool(last_resume and (now - last_resume).total_seconds() < STARTUP_RESUME_MIN_INTERVAL_SECONDS)
 
         eligible: list[tuple[dict, dict]] = []
         initial_pending_count = 0
+        resumed_paused_count = 0
         for profile in self.configured_profiles():
             state = self.state_for(profile["slug"])
             initial_until = parse_iso(state.get("initial_sync_until"))
             initial_pending = bool(initial_until and not state.get("initial_sync_completed_at"))
-            if state.get("paused") and initial_pending and not state.get("paused_by_user_at"):
+            was_paused = bool(state.get("paused"))
+            if was_paused and STARTUP_RESUME_CLEAR_PAUSED:
                 state["paused"] = False
-                state["last_action"] = "Pausa temporaria limpa no startup; primeira sync inteligente retomada."
-            if state.get("paused") or profile_running(profile):
+                state.pop("paused_by_user_at", None)
+                state["startup_auto_resumed_at"] = now.isoformat(timespec="seconds")
+                if initial_pending:
+                    state["last_action"] = "Pausa anterior removida ao abrir o painel; primeira sync inteligente retomada."
+                else:
+                    state["last_action"] = "Pausa anterior removida ao abrir o painel."
+                resumed_paused_count += 1
+            elif was_paused:
+                continue
+            if profile_running(profile):
                 continue
             if not self.session_ready(profile, state):
+                continue
+            if recent_resume and not was_paused and not initial_pending:
                 continue
             if initial_pending:
                 state["startup_resume_requested_at"] = now.isoformat(timespec="seconds")
@@ -1630,6 +1764,9 @@ class ProfilesApp:
                 f"Sync de retomada agendada para {total} perfil(is), "
                 f"com intervalo de {human_duration(STARTUP_RESUME_STAGGER_SECONDS)} para evitar sobrecarga."
             )
+        elif resumed_paused_count:
+            self.last_action = f"{resumed_paused_count} perfil(is) sairam da pausa ao abrir o painel."
+        if total or resumed_paused_count:
             self.save_all()
 
     def post_ui_action(self, action) -> None:
@@ -1681,9 +1818,38 @@ class ProfilesApp:
         save_profiles_config(self.config)
         save_state(self.state)
 
+    def cleanup_pending_deletes(self) -> None:
+        pending = list(self.state.get("pending_deletes", []))
+        if not pending:
+            return
+        kept = []
+        cleaned = 0
+        for item in pending:
+            path = Path(str(item.get("path", "")))
+            if not path:
+                continue
+            if not path_is_inside(path, PROFILES_DIR) or path.resolve(strict=False) == PROFILES_DIR.resolve(strict=False):
+                item["last_error"] = "caminho fora da pasta geral; limpeza ignorada"
+                kept.append(item)
+                continue
+            if not path.exists():
+                cleaned += 1
+                continue
+            try:
+                shutil.rmtree(path)
+                cleaned += 1
+            except OSError as exc:
+                item["last_error"] = str(exc)
+                item["updated_at"] = now_iso()
+                kept.append(item)
+        self.state["pending_deletes"] = kept
+        if cleaned:
+            self.last_action = f"Limpeza pendente concluida para {cleaned} pasta(s)."
+
     def reload_data(self, select_slug: str | None = None) -> None:
         self.config = ensure_profiles_config()
         self.state = load_state()
+        self.cleanup_pending_deletes()
         if select_slug:
             self.selected_slug = select_slug
         elif not self.selected_slug:
@@ -2197,16 +2363,13 @@ class ProfilesApp:
                 return
             log_box.insert(tk.END, clean + "\n")
             log_box.see(tk.END)
-            if clean.startswith("SELF_JID:"):
-                detected = jid_to_phone(clean.split(":", 1)[1].strip())
-                if detected and should_replace_detected_number(str(profile.get("number") or ""), detected):
-                    profile["number"] = detected
-                    profile["number_digits"] = phone_digits(detected)
-                    profile["updated_at"] = now_iso()
+            detected = detected_phone_from_log_line(clean)
+            if detected:
+                if apply_detected_profile_number(profile, detected):
                     self.save_all()
                     self.last_action = f"Numero identificado pelo QR: {detected}."
                     self.refresh()
-            elif "Successfully connected" in clean or "Connected to WhatsApp" in clean:
+            if "Successfully connected" in clean or "Connected to WhatsApp" in clean:
                 state["authenticated_at"] = now_iso()
                 if not state.get("initial_sync_started_at"):
                     started = datetime.now()
@@ -2395,21 +2558,47 @@ class ProfilesApp:
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.pack(fill=tk.X, pady=(4, 0))
-        self._button(buttons, "Cancelar", GRAY, win.destroy, width=10).pack(side=tk.RIGHT, padx=(8, 0))
-        self._button(
+        progress = tk.Label(
+            frame,
+            text="",
+            bg=BG,
+            fg=YELLOW,
+            font=("Segoe UI", 9, "bold"),
+            wraplength=560,
+            justify=tk.LEFT,
+        )
+        progress.pack(anchor="w", fill=tk.X, pady=(2, 0))
+
+        cancel_button = self._button(buttons, "Cancelar", GRAY, win.destroy, width=10)
+        cancel_button.pack(side=tk.RIGHT, padx=(8, 0))
+        delete_button = self._button(
             buttons,
             "Excluir perfil",
             RED,
-            lambda: self.confirm_remove_profile(profile, win, delete_data=bool(delete_data.get())),
+            lambda: self.confirm_remove_profile(
+                profile,
+                win,
+                delete_data=bool(delete_data.get()),
+                progress=progress,
+                controls=[cancel_button, delete_button, option_delete],
+            ),
             width=14,
-        ).pack(side=tk.RIGHT, padx=8)
+        )
+        delete_button.pack(side=tk.RIGHT, padx=8)
 
         center_child_window(win, self.root, 660, 420)
         win.deiconify()
         win.lift(self.root)
         win.focus_force()
 
-    def confirm_remove_profile(self, profile: dict, win: tk.Toplevel, delete_data: bool) -> None:
+    def confirm_remove_profile(
+        self,
+        profile: dict,
+        win: tk.Toplevel,
+        delete_data: bool,
+        progress: tk.Label | None = None,
+        controls: list[tk.Widget] | None = None,
+    ) -> None:
         name = profile.get("name") or profile.get("slug")
         paths = profile_paths(profile)
         profile_dir = paths["profile_dir"]
@@ -2459,11 +2648,47 @@ class ProfilesApp:
             if not ok:
                 return
 
+        if progress:
+            wait_message = (
+                "Excluindo... fechando a bridge e liberando arquivos locais. Pode levar alguns segundos."
+                if delete_data
+                else "Excluindo... fechando a bridge deste perfil."
+            )
+            progress.configure(text=wait_message, fg=YELLOW)
+        for control in controls or []:
+            try:
+                control.configure(state=tk.DISABLED)
+            except tk.TclError:
+                pass
+        try:
+            win.configure(cursor="watch")
+            self.root.configure(cursor="watch")
+            win.update_idletasks()
+            self.root.update_idletasks()
+        except tk.TclError:
+            pass
+
         try:
             self.remove_profile(profile, delete_data=delete_data)
         except OSError as exc:
+            for control in controls or []:
+                try:
+                    control.configure(state=tk.NORMAL)
+                except tk.TclError:
+                    pass
+            try:
+                win.configure(cursor="")
+                self.root.configure(cursor="")
+            except tk.TclError:
+                pass
+            if progress:
+                progress.configure(text="Nao consegui concluir. Veja o erro abaixo.", fg=RED)
             mb.showerror("Excluir perfil", f"Nao consegui excluir o perfil.\n\n{exc}", parent=win)
             return
+        try:
+            self.root.configure(cursor="")
+        except tk.TclError:
+            pass
         win.destroy()
         self.refresh()
 
@@ -2475,7 +2700,7 @@ class ProfilesApp:
         paths = profile_paths(profile)
         profile_dir = paths["profile_dir"]
 
-        stop_profile(profile, wait_seconds=8.0 if delete_data else 4.0)
+        stop_profile(profile, wait_seconds=3.0 if delete_data else 2.0)
         qr_window = self.qr_windows.pop(slug, None)
         if qr_window and qr_window.winfo_exists():
             try:
@@ -2483,32 +2708,28 @@ class ProfilesApp:
             except tk.TclError:
                 pass
 
+        deleted_now = not delete_data or not profile_dir.exists()
         if delete_data and profile_dir.exists():
-            last_error: OSError | None = None
-            deadline = time.time() + 18
-            attempt = 0
-            while time.time() < deadline:
-                try:
-                    shutil.rmtree(profile_dir)
-                    last_error = None
+            for attempt in range(2):
+                deleted_now, last_error = try_delete_profile_dir(profile_dir, self.state, name)
+                if deleted_now:
                     break
-                except OSError as exc:
-                    last_error = exc
-                    stop_profile(profile, wait_seconds=2.0)
-                    time.sleep(min(1.5, 0.35 + (attempt * 0.2)))
-                    attempt += 1
-            if last_error:
-                raise last_error
+                stop_profile(profile, wait_seconds=1.0)
+                if attempt == 0:
+                    time.sleep(0.4)
 
         self.config["profiles"] = [item for item in self.config.get("profiles", []) if item.get("slug") != slug]
         self.state.setdefault("profiles", {}).pop(slug, None)
         remaining = self.display_profiles()
         self.selected_slug = remaining[0]["slug"] if remaining else None
-        self.last_action = (
-            f"Perfil excluido e dados apagados: {name}."
-            if delete_data
-            else f"Perfil excluido do painel, dados preservados: {name}."
-        )
+        if delete_data and not deleted_now:
+            self.last_action = f"Perfil excluido do painel; dados ficaram em limpeza pendente porque o Windows bloqueou o arquivo: {name}."
+        else:
+            self.last_action = (
+                f"Perfil excluido e dados apagados: {name}."
+                if delete_data
+                else f"Perfil excluido do painel, dados preservados: {name}."
+            )
         self.save_all()
 
     def sync_selected(self) -> None:
@@ -2695,9 +2916,7 @@ class ProfilesApp:
         if not detected:
             return False
         changed = False
-        if should_replace_detected_number(str(profile.get("number") or ""), detected):
-            profile["number"] = detected
-            profile["number_digits"] = phone_digits(detected)
+        if apply_detected_profile_number(profile, detected):
             changed = True
         if row[1] and not profile.get("whatsapp_push_name"):
             profile["whatsapp_push_name"] = row[1]
@@ -2892,6 +3111,7 @@ class ProfilesApp:
 
     def tick(self) -> None:
         action_log("tick-start")
+        self.cleanup_pending_deletes()
         for profile in self.profiles():
             try:
                 self.tick_profile(profile)
