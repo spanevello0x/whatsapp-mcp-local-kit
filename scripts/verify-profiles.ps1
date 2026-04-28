@@ -81,6 +81,18 @@ foreach ($shortcutPath in @(
   }
 }
 
+$runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$expectedRegistryCommand = '"' + $expectedPythonw + '" "' + $expectedLauncher + '" --minimized'
+try {
+  $registryAutostart = (Get-ItemProperty -Path $runKey -Name "WhatsApp MCP Tray" -ErrorAction Stop)."WhatsApp MCP Tray"
+  $registryStatus = if ($registryAutostart -eq $expectedRegistryCommand) { "OK" } else { "REVISAR" }
+  $registryColor = if ($registryStatus -eq "OK") { "Green" } else { "Yellow" }
+  Write-Host "$runKey\WhatsApp MCP Tray -> $registryStatus" -ForegroundColor $registryColor
+  Write-Host "  Value:  $registryAutostart"
+} catch {
+  Write-Host "$runKey\WhatsApp MCP Tray -> ausente" -ForegroundColor Yellow
+}
+
 $legacyStartupVbs = Join-Path $startup "WhatsApp MCP Bridge.vbs"
 if (Test-Path $legacyStartupVbs) {
   Write-Host "$legacyStartupVbs -> REVISAR" -ForegroundColor Yellow

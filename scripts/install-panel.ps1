@@ -159,6 +159,18 @@ function New-PanelShortcut {
   $shortcut.Save()
 }
 
+function Set-PanelRegistryAutostart {
+  $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+  $command = '"' + $shortcutPythonw + '" "' + $launcherPath + '" --minimized'
+  New-Item -Path $runKey -Force | Out-Null
+  New-ItemProperty -Path $runKey -Name "WhatsApp MCP Tray" -Value $command -PropertyType String -Force | Out-Null
+}
+
+function Remove-PanelRegistryAutostart {
+  $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+  Remove-ItemProperty -Path $runKey -Name "WhatsApp MCP Tray" -ErrorAction SilentlyContinue
+}
+
 $desktopShortcutPath = Join-Path $desktop "WhatsApp MCP Tray.lnk"
 if (Test-Path $desktopShortcutPath) { Remove-Item -LiteralPath $desktopShortcutPath -Force }
 New-PanelShortcut -Path $desktopShortcutPath -Arguments ('"' + $launcherPath + '"') -Description "WhatsApp MCP local panel"
@@ -201,22 +213,35 @@ foreach ($legacyStartupPath in @($legacyStartupShortcutPath, $legacyStartupVbsPa
 }
 $startupTempShortcutPath = Join-Path $PanelDir "WhatsApp MCP Tray Startup.lnk"
 $autoStartCreated = $false
+$autoStartMethod = ""
 try {
   if (Test-Path $startupTempShortcutPath) { Remove-Item -LiteralPath $startupTempShortcutPath -Force }
   New-PanelShortcut -Path $startupTempShortcutPath -Arguments ('"' + $launcherPath + '" --minimized') -Description "WhatsApp MCP local panel minimized"
   Copy-Item -LiteralPath $startupTempShortcutPath -Destination $startupShortcutPath -Force
   $autoStartCreated = Test-Path $startupShortcutPath
+  if ($autoStartCreated) {
+    $autoStartMethod = "Startup shortcut"
+    Remove-PanelRegistryAutostart
+  }
 } catch {
   Write-Warning "Auto-start nao criado. O Windows/antivirus bloqueou escrita em Startup: $($_.Exception.Message)"
-  Write-Warning "Crie manualmente o auto-start pelo Explorer: abra shell:startup e copie o atalho 'WhatsApp MCP Tray.lnk' da Area de Trabalho para essa pasta."
-  Write-Warning "Se o antivirus pedir excecao, libere apenas o arquivo '$startupShortcutPath', nao powershell.exe."
+  Write-Warning "Vou usar o fallback padrao do Windows para este usuario: HKCU\Software\Microsoft\Windows\CurrentVersion\Run."
+  try {
+    Set-PanelRegistryAutostart
+    $autoStartCreated = $true
+    $autoStartMethod = "Registry Run"
+  } catch {
+    Write-Warning "Auto-start por Registro tambem falhou: $($_.Exception.Message)"
+    Write-Warning "Crie manualmente o auto-start pelo Explorer: abra shell:startup e copie o atalho 'WhatsApp MCP Tray.lnk' da Area de Trabalho para essa pasta."
+    Write-Warning "Se o antivirus pedir excecao, libere apenas o arquivo '$startupShortcutPath', nao powershell.exe."
+  }
 }
 
 Write-Host "Painel instalado em: $PanelDir"
 Write-Host "Icone criado: $iconPath"
 Write-Host "Atalho criado: WhatsApp MCP Tray.lnk"
 if ($autoStartCreated) {
-  Write-Host "Auto-start criado: WhatsApp MCP Tray.lnk"
+  Write-Host "Auto-start criado: $autoStartMethod"
 } else {
   Write-Host "Auto-start pendente: ver aviso acima"
 }

@@ -105,17 +105,37 @@ Alguns antivirus bloqueiam escrita automatica em:
 C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
 ```
 
-Nesse caso, faca manualmente pelo Explorer:
+Nesse caso, o instalador tenta automaticamente um fallback seguro no Registro do usuario:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
+```
+
+Esse fallback nao exige permissao de administrador e inicia o mesmo `launch_panel.py --minimized` no login.
+
+Se quiser reparar manualmente pelo repo:
+
+```powershell
+python scripts\repair-shortcuts.py --registry-only
+```
+
+Se preferir usar a pasta Startup mesmo assim, faca pelo Explorer:
 
 1. Abra a pasta Startup digitando `shell:startup` no Executar do Windows.
 2. Copie o atalho `WhatsApp MCP Tray.lnk` da Area de Trabalho para essa pasta.
 3. Se existirem `WhatsApp MCP Painel.lnk` ou `WhatsApp MCP Bridge.vbs`, mova para fora da pasta Startup.
 4. Se o antivirus perguntar, libere apenas o arquivo `WhatsApp MCP Tray.lnk`, nao o PowerShell inteiro.
 
-Estado esperado no Startup:
+Estado esperado no Startup, se esse metodo for usado:
 
 ```text
 WhatsApp MCP Tray.lnk
+```
+
+Estado esperado no Registro, se o fallback for usado:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
 ```
 
 No macOS, o auto-start fica em:

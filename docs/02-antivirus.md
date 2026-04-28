@@ -54,7 +54,21 @@ C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Start
 
 Evite liberar a pasta Startup inteira se o antivirus permitir excecao por arquivo.
 
-Se mesmo assim o instalador receber **Acesso negado** ao criar o auto-start, crie o atalho manualmente pelo Explorer:
+Se mesmo assim o instalador receber **Acesso negado** ao criar o auto-start, ele tenta usar o fallback padrao do Windows para o usuario atual:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
+```
+
+Esse fallback aponta para `pythonw.exe` + `launch_panel.py --minimized` e nao exige administrador.
+
+Se quiser reparar isso manualmente pelo repo:
+
+```powershell
+python scripts\repair-shortcuts.py --registry-only
+```
+
+Se preferir a pasta Startup, crie o atalho manualmente pelo Explorer:
 
 1. Abra `shell:startup` no Executar do Windows.
 2. Copie `WhatsApp MCP Tray.lnk` da Area de Trabalho para essa pasta.
