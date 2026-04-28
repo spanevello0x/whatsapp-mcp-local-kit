@@ -22,11 +22,13 @@ Se o repositorio for clonado em outro local, libere a pasta real do clone.
 
 Essas excecoes normalmente sao feitas uma vez so. O usuario so precisa revisar se mudar a pasta das bases, clonar o repo em outro local, reinstalar o painel, recompilar a bridge ou se o antivirus colocar algum arquivo em quarentena.
 
-Se o auto-start for bloqueado, libere apenas este atalho quando possivel:
+No Windows, o auto-start padrao fica no Registro do usuario:
 
 ```text
-C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
 ```
+
+Se existir atalho antigo em `shell:startup`, ele e legado/opcional.
 
 No macOS, nao desative Gatekeeper/XProtect/EDR. Se precisar liberar, use excecoes pontuais:
 
@@ -65,6 +67,11 @@ Regras obrigatorias:
 - Operacoes de envio de mensagem precisam de confirmacao explicita.
 - A bridge deve escutar apenas em 127.0.0.1.
 - Ao final, valide com operacoes read-only.
+
+Como escolher o sistema:
+- Se for Windows, use `scripts/bootstrap-windows.ps1`.
+- Se for MacBook/macOS, use `scripts/bootstrap-macos.sh`.
+- O repositorio e o mesmo, mas os scripts sao separados. Diagnostique o sistema antes de executar.
 
 Comando esperado no Windows, depois do diagnostico e das excecoes:
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp

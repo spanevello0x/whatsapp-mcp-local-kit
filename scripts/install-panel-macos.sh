@@ -61,6 +61,11 @@ config = {
     "sync_extend_minutes": 10,
     "random_sync_min_minutes": 10,
     "random_sync_max_minutes": 50,
+    "startup_resume_sync": True,
+    "startup_resume_initial_delay_seconds": 30,
+    "startup_resume_stagger_seconds": 120,
+    "startup_resume_jitter_seconds": 45,
+    "startup_resume_min_interval_minutes": 5,
 }
 
 if profiles_mode:
@@ -99,8 +104,15 @@ VENV="$PANEL_DIR/.venv"
 PYTHON_BIN="$VENV/bin/python"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
-  uv venv "$VENV"
+  uv venv --python python3 "$VENV"
 fi
+
+"$PYTHON_BIN" - <<'PY' >/dev/null 2>&1 || {
+import tkinter
+PY
+  echo "Python do painel nao consegue importar tkinter. Instale Python com Tkinter e rode o bootstrap novamente." >&2
+  exit 2
+}
 
 MODULE_PROBE='import importlib.util; mods=["pystray","PIL","qrcode","AppKit"]; missing=[m for m in mods if importlib.util.find_spec(m) is None]; print(" ".join(missing))'
 MISSING="$("$PYTHON_BIN" -c "$MODULE_PROBE" || true)"

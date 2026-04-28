@@ -69,8 +69,10 @@ Desktop\WhatsApp MCP Tray.lnk
 Auto-start:
 
 ```text
-AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
 ```
+
+A pasta `shell:startup` fica apenas como alternativa/legado.
 
 ## Primeiro Login
 

@@ -67,6 +67,17 @@ if ! command -v clang >/dev/null 2>&1; then
   missing=1
 fi
 
+if ! python3 - <<'PY' >/dev/null 2>&1
+import tkinter
+PY
+then
+  echo "[FALTA] python3 tkinter"
+  echo "Tkinter e necessario para abrir o painel. Rode install-dependencies-macos.sh --install ou instale Python com Tkinter."
+  missing=1
+else
+  echo "[OK] python3 tkinter"
+fi
+
 if [[ "$missing" == "1" ]]; then
   echo
   echo "Instale as dependencias faltantes ou rode:"

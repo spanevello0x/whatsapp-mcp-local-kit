@@ -35,6 +35,8 @@ O script espera:
 
 Se o Xcode Command Line Tools nao existir, o script chama `xcode-select --install` e para. Depois de concluir a instalacao da Apple, rode o bootstrap de novo.
 
+O bootstrap tambem verifica `python3 tkinter`, porque o painel usa Tkinter. Se esse teste falhar, instale Python com Tkinter via Homebrew/python.org e rode novamente.
+
 ## Caminhos padrao
 
 ```text

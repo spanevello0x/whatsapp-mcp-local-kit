@@ -51,6 +51,17 @@ Esta bridge usa **whatsmeow** em Go. Ela nao e uma conexao Baileys.
 
 Antes de rodar o instalador, leia [docs/02-antivirus.md](docs/02-antivirus.md). O caminho seguro e liberar apenas as pastas do kit, do painel e das bases locais. Nao crie excecao global para `powershell.exe`, `cmd.exe`, `python.exe`, `go.exe` ou `wscript.exe`.
 
+## Como O Sistema Escolhe Windows Ou Mac
+
+O repositorio e o mesmo para Windows e macOS, mas os instaladores sao separados:
+
+- Windows: `scripts/bootstrap-windows.ps1`
+- macOS: `scripts/bootstrap-macos.sh`
+
+Quando voce cola este GitHub no Codex ou Claude, a IA deve primeiro diagnosticar o sistema operacional e entao escolher o script correto. Se voce estiver instalando manualmente, use o bloco correspondente abaixo.
+
+Nao rode o script de Windows no Mac nem o script de Mac no Windows. O painel, o MCP `whatsapp-profiles`, a bridge, a sync inteligente/random e a sync de retomada existem nos dois fluxos.
+
 ## Instalacao Rapida No Windows
 
 Clone o repositorio:

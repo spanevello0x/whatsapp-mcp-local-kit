@@ -42,7 +42,7 @@ Atalhos:
 
 ```text
 Desktop\WhatsApp MCP Tray.lnk
-AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
 ~/Desktop/WhatsApp MCP Tray.app
 ~/Desktop/WhatsApp MCP Tray.command
 ~/Library/LaunchAgents/com.whatsapp-mcp.tray.plist

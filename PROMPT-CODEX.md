@@ -38,8 +38,9 @@ Passos esperados no Windows:
    - pasta real do repositorio clonado;
    - C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel;
    - C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles.
-   Se auto-start for bloqueado, liberar apenas:
-   - C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk.
+   O auto-start padrao no Windows usa:
+   - HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray.
+   A pasta Startup e apenas alternativa/legado.
 5. Rodar o bootstrap Windows em modo perfis:
    powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 6. Se faltarem dependencias e eu autorizar, rodar:
