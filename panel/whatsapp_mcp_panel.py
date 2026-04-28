@@ -71,12 +71,114 @@ GREEN = "#16a34a"
 RED = "#dc2626"
 YELLOW = "#d97706"
 BLUE = "#2563eb"
+GRAY = "#334155"
+BUTTON_DISABLED_BG = "#243044"
+BUTTON_DISABLED_FG = "#8b95a6"
+BUTTON_HOVER_TINT = "#ffffff"
 
 STATUS_COLORS = {
     "running": (22, 163, 74, 255),
     "waiting": (217, 119, 6, 255),
     "stopped": (107, 114, 128, 255),
 }
+
+
+def blend_hex(color: str, overlay: str, alpha: float) -> str:
+    base = color.lstrip("#")
+    top = overlay.lstrip("#")
+    if len(base) != 6 or len(top) != 6:
+        return color
+    values = []
+    for index in (0, 2, 4):
+        b = int(base[index : index + 2], 16)
+        t = int(top[index : index + 2], 16)
+        values.append(round(b * (1 - alpha) + t * alpha))
+    return "#" + "".join(f"{value:02x}" for value in values)
+
+
+class ActionButton(tk.Label):
+    """Theme-independent button for macOS, where native tk.Button ignores colors."""
+
+    def __init__(self, parent: tk.Widget, text: str, color: str, command, width: int | None = None) -> None:
+        self._normal_bg = color
+        self._hover_bg = blend_hex(color, BUTTON_HOVER_TINT, 0.12)
+        self._pressed_bg = blend_hex(color, "#000000", 0.10)
+        self._command = command
+        self._enabled = True
+        super().__init__(
+            parent,
+            text=text,
+            bg=self._normal_bg,
+            fg=TEXT,
+            font=("Segoe UI", 9, "bold"),
+            padx=12,
+            pady=7,
+            width=width or 0,
+            anchor=tk.CENTER,
+            cursor="pointinghand",
+            relief=tk.FLAT,
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=blend_hex(color, "#000000", 0.18),
+            highlightcolor=blend_hex(color, "#000000", 0.18),
+            takefocus=True,
+        )
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Return>", self._on_key)
+        self.bind("<space>", self._on_key)
+
+    def configure(self, cnf=None, **kwargs):  # type: ignore[override]
+        if cnf:
+            kwargs.update(cnf)
+        if "command" in kwargs:
+            self._command = kwargs.pop("command")
+        if "state" in kwargs:
+            state = kwargs.pop("state")
+            self._enabled = state != tk.DISABLED and str(state) != "disabled"
+            kwargs["cursor"] = "pointinghand" if self._enabled else "arrow"
+        if "bg" in kwargs or "background" in kwargs:
+            color = kwargs.pop("bg", kwargs.pop("background", self._normal_bg))
+            self._normal_bg = color
+            self._hover_bg = blend_hex(color, BUTTON_HOVER_TINT, 0.12)
+            self._pressed_bg = blend_hex(color, "#000000", 0.10)
+            kwargs["highlightbackground"] = blend_hex(color, "#000000", 0.18)
+            kwargs["highlightcolor"] = blend_hex(color, "#000000", 0.18)
+        if self._enabled:
+            kwargs.setdefault("bg", self._normal_bg)
+            kwargs.setdefault("fg", TEXT)
+        else:
+            kwargs.setdefault("bg", BUTTON_DISABLED_BG)
+            kwargs.setdefault("fg", BUTTON_DISABLED_FG)
+        return super().configure(**kwargs)
+
+    config = configure
+
+    def _on_enter(self, _event=None) -> None:
+        if self._enabled:
+            super().configure(bg=self._hover_bg)
+
+    def _on_leave(self, _event=None) -> None:
+        super().configure(bg=self._normal_bg if self._enabled else BUTTON_DISABLED_BG)
+
+    def _on_press(self, _event=None) -> None:
+        if self._enabled:
+            super().configure(bg=self._pressed_bg)
+
+    def _on_release(self, event=None) -> None:
+        if not self._enabled:
+            return
+        inside = event is None or (0 <= event.x <= self.winfo_width() and 0 <= event.y <= self.winfo_height())
+        super().configure(bg=self._hover_bg if inside else self._normal_bg)
+        if inside and self._command:
+            self._command()
+
+    def _on_key(self, _event=None) -> str:
+        if self._enabled and self._command:
+            self._command()
+        return "break"
 
 
 def set_process_app_id() -> None:
@@ -315,19 +417,18 @@ class App:
         body.pack(fill=tk.BOTH, expand=True)
         controls = tk.Frame(body, bg=BG)
         controls.pack(fill=tk.X)
-        button_font = ("Segoe UI", 9, "bold")
-        self.sync_button = tk.Button(controls, text="Sincronizar agora", bg=BLUE, fg=TEXT, font=button_font, command=lambda: self.start_sync(True))
+        self.sync_button = ActionButton(controls, "Sincronizar agora", BLUE, lambda: self.start_sync(True), width=18)
         self.sync_button.pack(side=tk.LEFT, padx=4)
-        self.pause_button = tk.Button(controls, text="Pausar", bg=RED, fg=TEXT, font=button_font, command=self.pause)
+        self.pause_button = ActionButton(controls, "Pausar", RED, self.pause, width=10)
         self.pause_button.pack(side=tk.LEFT, padx=4)
-        self.resume_button = tk.Button(controls, text="Retomar random", bg=GREEN, fg=TEXT, font=button_font, command=self.resume)
+        self.resume_button = ActionButton(controls, "Retomar random", GREEN, self.resume, width=16)
         self.resume_button.pack(side=tk.LEFT, padx=4)
-        self.folder_button = tk.Button(controls, text="Pasta", bg="#334155", fg=TEXT, font=button_font, command=self.open_messages_folder)
+        self.folder_button = ActionButton(controls, "Pasta", GRAY, self.open_messages_folder, width=8)
         self.folder_button.pack(side=tk.LEFT, padx=4)
-        self.copy_button = tk.Button(controls, text="Copiar DB", bg="#334155", fg=TEXT, font=button_font, command=self.copy_messages_path)
+        self.copy_button = ActionButton(controls, "Copiar DB", GRAY, self.copy_messages_path, width=10)
         self.copy_button.pack(side=tk.LEFT, padx=4)
-        tk.Button(controls, text="Sair", font=button_font, command=self.quit).pack(side=tk.RIGHT, padx=4)
-        tk.Button(controls, text="Ocultar", font=button_font, command=self.hide).pack(side=tk.RIGHT, padx=4)
+        ActionButton(controls, "Sair", GRAY, self.quit, width=8).pack(side=tk.RIGHT, padx=4)
+        ActionButton(controls, "Ocultar", GRAY, self.hide, width=8).pack(side=tk.RIGHT, padx=4)
         self.info = tk.Text(body, height=12, bg=BG, fg=TEXT, relief=tk.FLAT, wrap=tk.WORD, font=("Segoe UI", 9))
         self.info.tag_configure("key", foreground=TEXT, font=("Segoe UI", 9, "bold"))
         self.info.tag_configure("good", foreground=GREEN, font=("Segoe UI", 9, "bold"))

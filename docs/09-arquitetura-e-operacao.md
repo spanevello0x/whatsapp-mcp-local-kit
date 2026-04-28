@@ -95,10 +95,10 @@ Cinza   pausado/parado
 Primeira sync inteligente:
 
 ```text
-initial_sync_min_minutes: 60
+initial_sync_min_minutes: 10
 initial_sync_live_lag_minutes: 45
 initial_sync_live_rate_per_minute: 20
-initial_sync_stable_minutes: 30
+initial_sync_stable_minutes: 5
 initial_sync_hours: 24
 ```
 

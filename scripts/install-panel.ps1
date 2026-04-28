@@ -81,6 +81,11 @@ if ($ProfilesMode) {
   $configMap["profiles_dir"] = $ProfilesDir
   $configMap["profiles_config"] = $profilesConfigPath
   $configMap["initial_sync_hours"] = 24
+  $configMap["initial_sync_min_minutes"] = 10
+  $configMap["initial_sync_idle_minutes"] = 3
+  $configMap["initial_sync_stable_minutes"] = 5
+  $configMap["initial_sync_live_lag_minutes"] = 45
+  $configMap["initial_sync_live_rate_per_minute"] = 20
   $configMap["control_port"] = 18763
   $configMap["profiles_base_confirmed"] = $baseConfirmed
 }

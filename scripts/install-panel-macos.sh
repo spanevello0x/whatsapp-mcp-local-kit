@@ -93,6 +93,11 @@ if profiles_mode:
         "profiles_config": str(profiles_config),
         "profiles_base_confirmed": base_confirmed,
         "initial_sync_hours": 24,
+        "initial_sync_min_minutes": 10,
+        "initial_sync_idle_minutes": 3,
+        "initial_sync_stable_minutes": 5,
+        "initial_sync_live_lag_minutes": 45,
+        "initial_sync_live_rate_per_minute": 20,
         "control_port": 18763,
     })
 
@@ -132,7 +137,7 @@ mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cat > "$APP_MACOS/WhatsApp MCP Tray" <<EOF
 #!/usr/bin/env bash
 cd "$PANEL_DIR"
-exec "$PYTHON_BIN" "$PANEL_DIR/launch_panel.py"
+exec -a "WhatsApp MCP Tray" "$PYTHON_BIN" "$PANEL_DIR/launch_panel.py"
 EOF
 chmod +x "$APP_MACOS/WhatsApp MCP Tray"
 if [[ -f "$PANEL_DIR/whatsapp-mcp-icon.icns" ]]; then
@@ -164,8 +169,7 @@ EOF
 
 cat > "$DESKTOP_LAUNCHER" <<EOF
 #!/usr/bin/env bash
-cd "$PANEL_DIR"
-"$PYTHON_BIN" "$PANEL_DIR/launch_panel.py"
+open -a "$DESKTOP_APP"
 EOF
 chmod +x "$DESKTOP_LAUNCHER"
 
@@ -179,12 +183,12 @@ cat > "$PLIST" <<EOF
   <string>com.whatsapp-mcp.tray</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$PYTHON_BIN</string>
-    <string>$PANEL_DIR/launch_panel.py</string>
+    <string>/usr/bin/open</string>
+    <string>-a</string>
+    <string>$DESKTOP_APP</string>
+    <string>--args</string>
     <string>--minimized</string>
   </array>
-  <key>WorkingDirectory</key>
-  <string>$PANEL_DIR</string>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>

@@ -3,6 +3,8 @@ from __future__ import annotations
 import runpy
 import sys
 import json
+import os
+import time
 import urllib.request
 from pathlib import Path
 
@@ -17,6 +19,7 @@ CONFIG = BASE_DIR / "panel_config.json"
 DEFAULT_PANEL = BASE_DIR / "whatsapp_mcp_panel.py"
 PROFILES_PANEL = BASE_DIR / "whatsapp_profiles_panel.py"
 LOG = BASE_DIR / "panel-launch.log"
+LOCK = BASE_DIR / "panel-launch.lock"
 DEFAULT_CONTROL_PORT = 18763
 
 
@@ -50,6 +53,39 @@ def show_existing_panel(config: dict) -> bool:
     except Exception:
         return False
 
+
+def acquire_single_instance_lock():
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    handle = LOCK.open("w", encoding="utf-8")
+    if sys.platform == "win32":
+        import msvcrt
+
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            handle.write(str(os.getpid()))
+            handle.flush()
+            return handle
+        except OSError:
+            handle.close()
+            return None
+    import fcntl
+
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle.write(str(Path.cwd()))
+        handle.flush()
+        return handle
+    except OSError:
+        handle.close()
+        return None
+
+
+def focus_existing_or_exit(config: dict) -> None:
+    for _ in range(20):
+        if show_existing_panel(config):
+            return
+        time.sleep(0.1)
+
 for site in reversed(VENV_SITES):
     if site.exists():
         sys.path.insert(0, str(site))
@@ -60,6 +96,10 @@ try:
     except OSError:
         pass
     CONFIG_DATA = load_config()
+    INSTANCE_LOCK = acquire_single_instance_lock()
+    if INSTANCE_LOCK is None:
+        focus_existing_or_exit(CONFIG_DATA)
+        raise SystemExit(0)
     if show_existing_panel(CONFIG_DATA):
         raise SystemExit(0)
     PANEL = get_panel_path()
