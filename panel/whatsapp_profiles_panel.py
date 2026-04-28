@@ -156,6 +156,32 @@ class ActionButton(tk.Label):
             self._command()
         return "break"
 
+
+def make_qr_photo(data: str, size: int = 340) -> tk.PhotoImage:
+    import qrcode
+
+    qr = qrcode.QRCode(border=4)
+    qr.add_data(data)
+    qr.make(fit=True)
+    matrix = qr.get_matrix()
+    modules = len(matrix)
+    scale = max(1, size // max(1, modules))
+    image_size = modules * scale
+    photo = tk.PhotoImage(width=image_size, height=image_size)
+    photo.put("#ffffff", to=(0, 0, image_size, image_size))
+    for y, row in enumerate(matrix):
+        x = 0
+        while x < modules:
+            if not row[x]:
+                x += 1
+                continue
+            start = x
+            while x < modules and row[x]:
+                x += 1
+            photo.put("#000000", to=(start * scale, y * scale, x * scale, (y + 1) * scale))
+    return photo
+
+
 OLD_AUTOCREATED_PROJECT_SLUGS = {"geral", "vendedores", "pessoal", "administrativo"}
 WINDOWS_RESERVED_NAMES = {
     "CON",
@@ -419,6 +445,24 @@ def center_child_window(window: tk.Toplevel, parent: tk.Misc, width: int, height
         window.geometry(f"{width}x{height}+{x}+{y}")
     except tk.TclError:
         window.geometry(f"{width}x{height}")
+
+
+def bring_child_window_to_front(window: tk.Toplevel, parent: tk.Misc | None = None) -> None:
+    try:
+        window.deiconify()
+        window.state("normal")
+        activate_macos_app()
+        if parent is not None:
+            window.lift(parent)
+        else:
+            window.lift()
+        window.focus_force()
+        if IS_MAC:
+            window.after(100, activate_macos_app)
+            window.after(150, window.lift)
+            window.after(220, window.focus_force)
+    except tk.TclError:
+        pass
 
 
 def slugify(value: str) -> str:
@@ -2189,6 +2233,8 @@ class ProfilesApp:
             return
         state = self.state_for(profile["slug"])
         if self.session_ready(profile, state):
+            self.show()
+            activate_macos_app()
             if profile_running(profile):
                 self.last_action = f"{profile.get('name')} ja esta autenticado e ja esta sincronizando."
                 mb.showinfo(
@@ -2197,6 +2243,7 @@ class ProfilesApp:
                         f"{profile.get('name')} ja esta autenticado e a bridge deste perfil esta aberta.\n\n"
                         "Nao precisa reconectar QR. Para trocar ou invalidar a sessao, remova este aparelho em Aparelhos conectados no WhatsApp do celular."
                     ),
+                    parent=self.root,
                 )
             else:
                 self.last_action = f"{profile.get('name')} ja esta autenticado; sync manual iniciada."
@@ -2206,6 +2253,7 @@ class ProfilesApp:
                         f"{profile.get('name')} ja esta autenticado.\n\n"
                         "Nao precisa reconectar QR. Vou iniciar uma sincronizacao agora. Para trocar ou invalidar a sessao, remova este aparelho em Aparelhos conectados no WhatsApp do celular."
                     ),
+                    parent=self.root,
                 )
                 self.start_sync(profile, manual=True)
             self.refresh()
@@ -2226,13 +2274,7 @@ class ProfilesApp:
         slug = profile["slug"]
         if slug in self.qr_windows and self.qr_windows[slug].winfo_exists():
             existing = self.qr_windows[slug]
-            existing.deiconify()
-            existing.state("normal")
-            existing.lift(self.root)
-            try:
-                existing.focus_force()
-            except tk.TclError:
-                pass
+            bring_child_window_to_front(existing, self.root)
             return
         ensure_profile_dirs(profile)
         if not BRIDGE_BINARY.exists():
@@ -2324,9 +2366,7 @@ class ProfilesApp:
         details_button.configure(command=toggle_details)
         qr_done = {"value": False}
         center_child_window(win, self.root, 660, 660)
-        win.deiconify()
-        win.lift(self.root)
-        win.focus_force()
+        bring_child_window_to_front(win, self.root)
 
         def show_authenticated() -> None:
             qr_done["value"] = True
@@ -2396,17 +2436,19 @@ class ProfilesApp:
             qr_text.insert(tk.END, data)
             qr_text.configure(state=tk.DISABLED)
             try:
-                import qrcode
-                from PIL import ImageTk
-
-                img = qrcode.make(data).resize((340, 340))
-                photo = ImageTk.PhotoImage(img)
-                qr_label.configure(image=photo)
+                photo = make_qr_photo(data, size=340)
+                qr_label.configure(image=photo, text="")
                 qr_label.image = photo
                 qr_fallback.pack_forget()
                 status.configure(text="Escaneie este QR no WhatsApp do celular.", fg=YELLOW)
-            except Exception:
-                qr_fallback.configure(text="Nao consegui renderizar a imagem do QR. Abra Detalhes tecnicos e copie o codigo para outro leitor.")
+            except Exception as exc:
+                action_log(f"qr-render-error {type(exc).__name__}: {exc}")
+                qr_fallback.configure(
+                    text=(
+                        "Nao consegui renderizar a imagem do QR neste Mac. "
+                        "Abra Detalhes tecnicos, copie o codigo acima e me envie o erro do log para corrigirmos."
+                    )
+                )
                 qr_fallback.pack(fill=tk.X, pady=(0, 8))
                 status.configure(text="QR recebido, mas a imagem nao renderizou.", fg=YELLOW)
 
