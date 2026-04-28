@@ -77,6 +77,8 @@ Estrutura da base:
 6. Clique em **Voltar ao painel**.
 7. Pode ocultar a janela; o menu bar/LaunchAgent mantem o painel ativo enquanto o Mac estiver logado.
 
+O instalador cria `whatsapp-mcp-icon.png`, `whatsapp-mcp-icon.ico` e `whatsapp-mcp-icon.icns`. No macOS, o `.app`, as janelas do painel e o icone da barra de menus usam a mesma logo para ficar facil identificar o sistema. Se abrir pelo `.command` de fallback, o macOS pode mostrar o icone do Terminal/Python no Dock; para uso normal, abra sempre pelo `.app`.
+
 ## Auto-start no macOS
 
 O auto-start usa LaunchAgent:

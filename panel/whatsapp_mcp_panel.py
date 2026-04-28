@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import random
@@ -18,8 +19,12 @@ from tkinter import messagebox as mb
 from tkinter import ttk
 import tkinter as tk
 
-CONFIG_PATH = Path(__file__).with_name("panel_config.json")
+PANEL_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = PANEL_DIR / "panel_config.json"
 DEFAULT_BRIDGE_ROOT = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "CLAUDE COWORK" / "Whatsapp" / "whatsapp-mcp"
+IS_WINDOWS = os.name == "nt"
+PANEL_ICON = PANEL_DIR / ("whatsapp-mcp-icon.ico" if IS_WINDOWS else "whatsapp-mcp-icon.png")
+APP_USER_MODEL_ID = "WhatsAppMCP.LocalTray"
 
 
 def load_config() -> dict:
@@ -72,6 +77,36 @@ STATUS_COLORS = {
     "waiting": (217, 119, 6, 255),
     "stopped": (107, 114, 128, 255),
 }
+
+
+def set_process_app_id() -> None:
+    if not IS_WINDOWS:
+        return
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except Exception:
+        pass
+
+
+def apply_window_icon(window: tk.Misc) -> None:
+    if IS_WINDOWS and PANEL_ICON.exists():
+        try:
+            window.iconbitmap(default=str(PANEL_ICON))
+            return
+        except tk.TclError:
+            try:
+                window.iconbitmap(str(PANEL_ICON))
+                return
+            except tk.TclError:
+                pass
+    icon_png = PANEL_DIR / "whatsapp-mcp-icon.png"
+    if icon_png.exists():
+        try:
+            photo = tk.PhotoImage(file=str(icon_png))
+            window.iconphoto(True, photo)
+            setattr(window, "_whatsapp_mcp_icon", photo)
+        except tk.TclError:
+            pass
 
 
 def strip_ansi(text: str) -> str:
@@ -248,7 +283,9 @@ def make_tray_icon(status: str, size: int = 64):
 
 class App:
     def __init__(self, minimized: bool = False) -> None:
+        set_process_app_id()
         self.root = tk.Tk()
+        apply_window_icon(self.root)
         self.root.title("WhatsApp MCP Tray")
         self.root.geometry("900x600")
         self.root.configure(bg=BG)

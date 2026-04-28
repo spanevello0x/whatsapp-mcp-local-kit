@@ -160,6 +160,7 @@ cat > "$APP_CONTENTS/Info.plist" <<EOF
 </dict>
 </plist>
 EOF
+/usr/bin/touch "$DESKTOP_APP" >/dev/null 2>&1 || true
 
 cat > "$DESKTOP_LAUNCHER" <<EOF
 #!/usr/bin/env bash

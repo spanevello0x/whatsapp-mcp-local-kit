@@ -102,6 +102,7 @@ PANEL_RUNTIME_VENV = PANEL_DIR / ".venv-user" if (PANEL_DIR / ".venv-user").exis
 PANEL_VENV_PYTHONW = PANEL_RUNTIME_VENV / "Scripts" / "pythonw.exe" if IS_WINDOWS else PANEL_RUNTIME_VENV / "bin" / "python"
 PANEL_LAUNCHER = PANEL_DIR / "launch_panel.py"
 PANEL_ICON = PANEL_DIR / ("whatsapp-mcp-icon.ico" if IS_WINDOWS else "whatsapp-mcp-icon.png")
+APP_USER_MODEL_ID = "WhatsAppMCP.LocalTray"
 MAC_LAUNCH_AGENT_DIR = Path.home() / "Library" / "LaunchAgents"
 MAC_LAUNCH_AGENT = MAC_LAUNCH_AGENT_DIR / "com.whatsapp-mcp.tray.plist"
 
@@ -251,6 +252,36 @@ def action_log(message: str) -> None:
             handle.write(f"{stamp} {message}\n")
     except OSError:
         pass
+
+
+def set_process_app_id() -> None:
+    if not IS_WINDOWS:
+        return
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except Exception:
+        pass
+
+
+def apply_window_icon(window: tk.Misc) -> None:
+    if IS_WINDOWS and PANEL_ICON.exists():
+        try:
+            window.iconbitmap(default=str(PANEL_ICON))
+            return
+        except tk.TclError:
+            try:
+                window.iconbitmap(str(PANEL_ICON))
+                return
+            except tk.TclError:
+                pass
+    icon_png = PANEL_DIR / "whatsapp-mcp-icon.png"
+    if icon_png.exists():
+        try:
+            photo = tk.PhotoImage(file=str(icon_png))
+            window.iconphoto(True, photo)
+            setattr(window, "_whatsapp_mcp_icon", photo)
+        except tk.TclError:
+            pass
 
 
 def center_child_window(window: tk.Toplevel, parent: tk.Misc, width: int, height: int) -> None:
@@ -888,6 +919,7 @@ class ProfileDialog:
         first_profile = bool(profile and profile_is_starter(profile))
         self.win = tk.Toplevel(app.root)
         self.win.withdraw()
+        apply_window_icon(self.win)
         self.win.title("Adicionar numero WhatsApp" if first_profile or not profile else "Editar numero WhatsApp")
         self.win.configure(bg=BG)
         self.win.transient(app.root)
@@ -1062,7 +1094,9 @@ class ProfilesApp:
         self.start_minimized = minimized
         self.refreshing = False
 
+        set_process_app_id()
         self.root = tk.Tk()
+        apply_window_icon(self.root)
         self.root.title("WhatsApp MCP - Perfis")
         self.root.geometry("1080x720")
         self.root.configure(bg=BG)
@@ -1607,6 +1641,7 @@ class ProfilesApp:
         win = tk.Toplevel(self.root)
         self.base_setup_window = win
         win.withdraw()
+        apply_window_icon(win)
         win.title("Primeira configuracao" if first_time else "Pasta geral da base")
         win.configure(bg=BG)
         win.transient(self.root)
@@ -1722,6 +1757,7 @@ class ProfilesApp:
         win = tk.Toplevel(self.root)
         self.settings_window = win
         win.withdraw()
+        apply_window_icon(win)
         win.title("Configuracoes do WhatsApp MCP")
         win.configure(bg=BG)
         win.transient(self.root)
@@ -1839,6 +1875,7 @@ class ProfilesApp:
 
         win = tk.Toplevel(self.root)
         win.withdraw()
+        apply_window_icon(win)
         self.qr_windows[slug] = win
         win.title(f"Conectar QR - {profile.get('name', slug)}")
         win.configure(bg=BG)
@@ -2059,6 +2096,7 @@ class ProfilesApp:
 
         win = tk.Toplevel(self.root)
         win.withdraw()
+        apply_window_icon(win)
         win.title(f"Remover perfil - {profile.get('name', profile.get('slug'))}")
         win.configure(bg=BG)
         win.transient(self.root)

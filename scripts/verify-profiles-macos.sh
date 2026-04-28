@@ -46,6 +46,7 @@ for p in \
   "$PANEL_DIR/whatsapp-mcp-icon.png" \
   "$DESKTOP_APP" \
   "$DESKTOP_APP/Contents/MacOS/WhatsApp MCP Tray" \
+  "$DESKTOP_APP/Contents/Resources/whatsapp-mcp-icon.icns" \
   "$DESKTOP_LAUNCHER" \
   "$PLIST" \
   "$REPO_ROOT/profiles-mcp-server/main.py" \
