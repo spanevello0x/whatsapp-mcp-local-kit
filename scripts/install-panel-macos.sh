@@ -138,7 +138,7 @@ mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cat > "$APP_MACOS/WhatsApp MCP Tray" <<EOF
 #!/usr/bin/env bash
 cd "$PANEL_DIR"
-exec -a "WhatsApp MCP Tray" "$PYTHON_BIN" "$PANEL_DIR/launch_panel.py"
+exec -a "WhatsApp MCP Tray" "$PYTHON_BIN" "$PANEL_DIR/launch_panel.py" "\$@"
 EOF
 chmod +x "$APP_MACOS/WhatsApp MCP Tray"
 if [[ -f "$PANEL_DIR/whatsapp-mcp-icon.icns" ]]; then
