@@ -65,7 +65,15 @@ No macOS:
 
 ## Auto-start Pendente
 
-Se o verificador mostrar Startup ausente ou antigo:
+No Windows, o auto-start padrao do kit e o Registro do usuario:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
+```
+
+Isso abre `launch_panel.py --minimized` com `pythonw.exe`, sem janela preta e sem depender da pasta Startup.
+
+Se o verificador mostrar Registro ausente ou apontando para caminho antigo:
 
 1. Libere no antivirus as pastas principais:
 
@@ -73,12 +81,6 @@ Se o verificador mostrar Startup ausente ou antigo:
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 <pasta real do repositorio clonado>
-```
-
-Se o bloqueio for especificamente no auto-start, libere apenas o atalho correto:
-
-```text
-C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
 ```
 
 2. Reinstale o painel:
@@ -95,9 +97,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 
 Tambem e possivel ativar/desativar auto-start pelo botao **Configuracoes** no painel.
 
-O Startup correto deve conter `WhatsApp MCP Tray.lnk`. Se encontrar `WhatsApp MCP Painel.lnk` ou `WhatsApp MCP Bridge.vbs`, isso e legado e deve ser removido/desativado depois de confirmar que o Tray atual esta funcionando.
+Se encontrar `WhatsApp MCP Painel.lnk`, `WhatsApp MCP Bridge.vbs` ou `WhatsApp MCP Tray.lnk` dentro de `shell:startup`, isso e legado/opcional. O padrao atual e o Registro; remova itens da pasta Startup depois de confirmar que o Tray atual inicia pelo Registro para evitar inicializacao duplicada.
 
-### Se Der Acesso Negado Ao Criar O Auto-start
+### Se Quiser Usar Startup Como Alternativa
 
 Alguns antivirus bloqueiam escrita automatica em:
 
@@ -105,15 +107,7 @@ Alguns antivirus bloqueiam escrita automatica em:
 C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
 ```
 
-Nesse caso, o instalador tenta automaticamente um fallback seguro no Registro do usuario:
-
-```text
-HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
-```
-
-Esse fallback nao exige permissao de administrador e inicia o mesmo `launch_panel.py --minimized` no login.
-
-Se quiser reparar manualmente pelo repo:
+Isso nao afeta o metodo padrao por Registro. Para reparar o auto-start padrao:
 
 ```powershell
 python scripts\repair-shortcuts.py --registry-only
@@ -132,7 +126,7 @@ Estado esperado no Startup, se esse metodo for usado:
 WhatsApp MCP Tray.lnk
 ```
 
-Estado esperado no Registro, se o fallback for usado:
+Estado esperado no Registro, no metodo padrao:
 
 ```text
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray

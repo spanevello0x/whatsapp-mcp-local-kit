@@ -58,6 +58,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--panel-dir", default=str(default_panel_dir()))
     parser.add_argument("--startup-only", action="store_true")
+    parser.add_argument("--startup-shortcut", action="store_true")
     parser.add_argument("--desktop-only", action="store_true")
     parser.add_argument("--registry-only", action="store_true")
     args = parser.parse_args()
@@ -68,32 +69,37 @@ def main() -> int:
     if not launcher.exists():
         raise FileNotFoundError(f"Launcher nao encontrado: {launcher}")
 
-    import win32com.client
-
-    shell = win32com.client.Dispatch("WScript.Shell")
-    desktop = Path(shell.SpecialFolders("Desktop"))
-    startup = Path(shell.SpecialFolders("Startup"))
     pythonw = resolve_pythonw(panel_dir)
-
-    desktop_shortcut = desktop / "WhatsApp MCP Tray.lnk"
-    startup_shortcut = startup / "WhatsApp MCP Tray.lnk"
 
     if args.registry_only:
         set_registry_autostart(pythonw, launcher)
         print(f"Target: {pythonw}")
         return 0
 
-    if not args.startup_only:
+    import win32com.client
+
+    shell = win32com.client.Dispatch("WScript.Shell")
+    desktop = Path(shell.SpecialFolders("Desktop"))
+    startup = Path(shell.SpecialFolders("Startup"))
+    desktop_shortcut = desktop / "WhatsApp MCP Tray.lnk"
+    startup_shortcut = startup / "WhatsApp MCP Tray.lnk"
+
+    if args.startup_only:
+        create_shortcut(shell, startup_shortcut, pythonw, f'"{launcher}" --minimized', panel_dir, icon)
+        print(f"Startup: {startup_shortcut}")
+        print(f"Target: {pythonw}")
+        return 0
+
+    if not args.desktop_only:
         create_shortcut(shell, desktop_shortcut, pythonw, f'"{launcher}"', panel_dir, icon)
         print(f"Desktop: {desktop_shortcut}")
 
     if not args.desktop_only:
-        try:
-            create_shortcut(shell, startup_shortcut, pythonw, f'"{launcher}" --minimized', panel_dir, icon)
-            print(f"Startup: {startup_shortcut}")
-        except Exception as exc:
-            print(f"Startup shortcut bloqueado: {exc}")
-            set_registry_autostart(pythonw, launcher)
+        set_registry_autostart(pythonw, launcher)
+
+    if args.startup_shortcut:
+        create_shortcut(shell, startup_shortcut, pythonw, f'"{launcher}" --minimized', panel_dir, icon)
+        print(f"Startup: {startup_shortcut}")
 
     print(f"Target: {pythonw}")
     return 0

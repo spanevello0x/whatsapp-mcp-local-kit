@@ -96,6 +96,8 @@ BRIDGE_BINARY = PROFILES_DIR / "bin" / ("whatsapp-bridge.exe" if os.name == "nt"
 STARTUP_DIR = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
 STARTUP_SHORTCUT = STARTUP_DIR / "WhatsApp MCP Tray.lnk"
 LEGACY_STARTUP_SHORTCUT = STARTUP_DIR / "WhatsApp MCP Painel.lnk"
+WINDOWS_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+WINDOWS_RUN_NAME = "WhatsApp MCP Tray"
 PANEL_RUNTIME_VENV = PANEL_DIR / ".venv-user" if (PANEL_DIR / ".venv-user").exists() else PANEL_DIR / ".venv"
 PANEL_VENV_PYTHONW = PANEL_RUNTIME_VENV / "Scripts" / "pythonw.exe" if IS_WINDOWS else PANEL_RUNTIME_VENV / "bin" / "python"
 PANEL_LAUNCHER = PANEL_DIR / "launch_panel.py"
@@ -728,6 +730,51 @@ def is_expected_autostart(info: dict) -> bool:
     )
 
 
+def expected_windows_autostart_command() -> str:
+    return f'"{panel_pythonw_path()}" "{PANEL_LAUNCHER}" --minimized'
+
+
+def read_windows_autostart() -> str:
+    if not IS_WINDOWS:
+        return ""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINDOWS_RUN_KEY, 0, winreg.KEY_READ) as key:
+            value, _ = winreg.QueryValueEx(key, WINDOWS_RUN_NAME)
+            return str(value)
+    except Exception:
+        return ""
+
+
+def write_windows_autostart(command: str) -> None:
+    import winreg
+
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINDOWS_RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+        winreg.SetValueEx(key, WINDOWS_RUN_NAME, 0, winreg.REG_SZ, command)
+
+
+def delete_windows_autostart() -> None:
+    import winreg
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WINDOWS_RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.DeleteValue(key, WINDOWS_RUN_NAME)
+    except FileNotFoundError:
+        pass
+
+
+def cleanup_windows_startup_shortcuts() -> list[str]:
+    notes: list[str] = []
+    for shortcut_path in [STARTUP_SHORTCUT, LEGACY_STARTUP_SHORTCUT]:
+        if shortcut_path.exists():
+            try:
+                shortcut_path.unlink()
+            except OSError as exc:
+                notes.append(f"nao removi {shortcut_path.name}: {exc}")
+    return notes
+
+
 def autostart_state() -> tuple[str, str]:
     if IS_MAC:
         if MAC_LAUNCH_AGENT.exists():
@@ -735,12 +782,13 @@ def autostart_state() -> tuple[str, str]:
         return "off", "Desativado: o painel nao inicia automaticamente com o macOS."
     if not IS_WINDOWS:
         return "unsupported", "Auto-start automatico nesta UI esta disponivel apenas em Windows e macOS."
-    tray = read_shortcut(STARTUP_SHORTCUT)
-    legacy = read_shortcut(LEGACY_STARTUP_SHORTCUT)
-    if tray.get("exists"):
-        return "on", "Ativo: existe atalho WhatsApp MCP Tray na inicializacao do Windows."
-    if legacy.get("exists"):
-        return "review", "Revisar: existe auto-start antigo apontando para launcher legado."
+    registry_value = read_windows_autostart()
+    if registry_value:
+        if registry_value == expected_windows_autostart_command():
+            return "on", "Ativo: Registro do Windows inicia o painel minimizado."
+        return "review", "Revisar: auto-start do Registro aponta para caminho antigo."
+    if STARTUP_SHORTCUT.exists() or LEGACY_STARTUP_SHORTCUT.exists():
+        return "review", "Revisar: existe atalho legado na pasta Startup. O padrao atual e Registro do Windows."
     return "off", "Desativado: o painel nao inicia automaticamente com o Windows."
 
 
@@ -810,34 +858,20 @@ def set_autostart_enabled(enabled: bool) -> tuple[bool, str]:
     if not IS_WINDOWS:
         return False, "Auto-start automatico nesta UI esta disponivel apenas em Windows e macOS."
     try:
-        STARTUP_DIR.mkdir(parents=True, exist_ok=True)
-        shell = load_wscript_shell()
-        for old in [LEGACY_STARTUP_SHORTCUT]:
-            if old.exists():
-                try:
-                    old.unlink()
-                except OSError:
-                    pass
         if enabled:
             pythonw = panel_pythonw_path()
             if not pythonw.exists():
                 return False, f"pythonw.exe do painel nao encontrado: {pythonw}"
             if not PANEL_LAUNCHER.exists():
                 return False, f"Launcher do painel nao encontrado: {PANEL_LAUNCHER}"
-            shortcut = shell.CreateShortcut(str(STARTUP_SHORTCUT))
-            shortcut.TargetPath = str(pythonw)
-            shortcut.Arguments = f'"{PANEL_LAUNCHER}" --minimized'
-            shortcut.WorkingDirectory = str(PANEL_DIR)
-            shortcut.Description = "WhatsApp MCP local panel minimized"
-            if PANEL_ICON.exists():
-                shortcut.IconLocation = str(PANEL_ICON)
-            shortcut.WindowStyle = 7
-            shortcut.Save()
-            return True, "Auto-start ativado. O painel vai iniciar minimizado com o Windows."
-        for shortcut_path in [STARTUP_SHORTCUT, LEGACY_STARTUP_SHORTCUT]:
-            if shortcut_path.exists():
-                shortcut_path.unlink()
-        return True, "Auto-start desativado."
+            write_windows_autostart(expected_windows_autostart_command())
+            notes = cleanup_windows_startup_shortcuts()
+            suffix = f" Itens legados em Startup precisam revisao manual: {'; '.join(notes)}." if notes else ""
+            return True, f"Auto-start ativado via Registro do Windows. O painel vai iniciar minimizado.{suffix}"
+        delete_windows_autostart()
+        notes = cleanup_windows_startup_shortcuts()
+        suffix = f" Alguns atalhos legados nao foram removidos: {'; '.join(notes)}." if notes else ""
+        return True, f"Auto-start desativado.{suffix}"
     except Exception as exc:
         return False, f"Nao consegui alterar o auto-start: {exc}"
 

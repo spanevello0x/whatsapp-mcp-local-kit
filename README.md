@@ -28,7 +28,7 @@ O fluxo de producao recomendado hoje e o **modo perfis**:
 - Bootstrap Windows para preparar dependencias, compilar a bridge e instalar o painel.
 - Bootstrap macOS em modo perfis beta para MacBook.
 - Painel local em Python/Tkinter com icone no Desktop/Mesa e bandeja/menu bar.
-- Auto-start opcional para abrir minimizado com o Windows ou macOS.
+- Auto-start padrao para abrir minimizado com o Windows ou macOS.
 - Cadastro de perfis por projeto.
 - QR Code sob demanda por perfil.
 - Identificacao do numero pelo QR quando a bridge retorna o JID do WhatsApp.

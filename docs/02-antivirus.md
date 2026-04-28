@@ -46,21 +46,13 @@ C:\Users\SEU_USUARIO\Downloads\whatsapp-mcp-local-kit
 C:\Users\SEU_USUARIO\Documents\New project 2\whatsapp-mcp-local-kit
 ```
 
-Se o antivirus bloquear o auto-start, prefira liberar apenas o atalho correto:
-
-```text
-C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
-```
-
-Evite liberar a pasta Startup inteira se o antivirus permitir excecao por arquivo.
-
-Se mesmo assim o instalador receber **Acesso negado** ao criar o auto-start, ele tenta usar o fallback padrao do Windows para o usuario atual:
+No Windows, o auto-start padrao fica no Registro do usuario:
 
 ```text
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WhatsApp MCP Tray
 ```
 
-Esse fallback aponta para `pythonw.exe` + `launch_panel.py --minimized` e nao exige administrador.
+Esse item aponta para `pythonw.exe` + `launch_panel.py --minimized`, abre o painel na bandeja e nao exige administrador.
 
 Se quiser reparar isso manualmente pelo repo:
 
@@ -68,7 +60,15 @@ Se quiser reparar isso manualmente pelo repo:
 python scripts\repair-shortcuts.py --registry-only
 ```
 
-Se preferir a pasta Startup, crie o atalho manualmente pelo Explorer:
+Evite liberar a pasta Startup inteira. O kit nao precisa dela no fluxo padrao.
+
+Se preferir a pasta Startup como metodo alternativo, libere apenas o atalho correto:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+```
+
+Para criar esse metodo alternativo pelo Explorer:
 
 1. Abra `shell:startup` no Executar do Windows.
 2. Copie `WhatsApp MCP Tray.lnk` da Area de Trabalho para essa pasta.
