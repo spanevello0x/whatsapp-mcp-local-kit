@@ -2705,34 +2705,96 @@ class ProfilesApp:
         try:
             win.configure(cursor="watch")
             self.root.configure(cursor="watch")
+            win.protocol("WM_DELETE_WINDOW", lambda: None)
             win.update_idletasks()
             self.root.update_idletasks()
         except tk.TclError:
             pass
 
-        try:
-            self.remove_profile(profile, delete_data=delete_data)
-        except OSError as exc:
-            for control in controls or []:
-                try:
-                    control.configure(state=tk.NORMAL)
-                except tk.TclError:
-                    pass
+        self.remove_profile_async(profile, delete_data=delete_data, win=win, progress=progress, controls=controls or [])
+
+    def remove_profile_async(
+        self,
+        profile: dict,
+        delete_data: bool,
+        win: tk.Toplevel,
+        progress: tk.Label | None,
+        controls: list[tk.Widget],
+    ) -> None:
+        slug = profile.get("slug")
+        if not slug:
+            return
+        name = profile.get("name") or slug
+        paths = profile_paths(profile)
+        profile_dir = paths["profile_dir"]
+        qr_window = self.qr_windows.pop(slug, None)
+        if qr_window and qr_window.winfo_exists():
             try:
-                win.configure(cursor="")
-                self.root.configure(cursor="")
+                qr_window.withdraw()
             except tk.TclError:
                 pass
-            if progress:
-                progress.configure(text="Nao consegui concluir. Veja o erro abaixo.", fg=RED)
-            mb.showerror("Excluir perfil", f"Nao consegui excluir o perfil.\n\n{exc}", parent=win)
-            return
-        try:
-            self.root.configure(cursor="")
-        except tk.TclError:
-            pass
-        win.destroy()
-        self.refresh()
+
+        def finish(error: Exception | None, deleted_now: bool) -> None:
+            for widget in (win, self.root):
+                try:
+                    widget.configure(cursor="")
+                except tk.TclError:
+                    pass
+            if error:
+                for control in controls:
+                    try:
+                        control.configure(state=tk.NORMAL)
+                    except tk.TclError:
+                        pass
+                try:
+                    win.protocol("WM_DELETE_WINDOW", win.destroy)
+                except tk.TclError:
+                    pass
+                if progress:
+                    progress.configure(text="Nao consegui concluir. Veja o erro abaixo.", fg=RED)
+                mb.showerror("Excluir perfil", f"Nao consegui excluir o perfil.\n\n{error}", parent=win)
+                return
+
+            self.config["profiles"] = [item for item in self.config.get("profiles", []) if item.get("slug") != slug]
+            self.state.setdefault("profiles", {}).pop(slug, None)
+            remaining = self.display_profiles()
+            self.selected_slug = remaining[0]["slug"] if remaining else None
+            if delete_data and not deleted_now:
+                self.last_action = f"Perfil excluido do painel; dados ficaram em limpeza pendente porque o sistema ainda estava usando o arquivo: {name}."
+            else:
+                self.last_action = (
+                    f"Perfil excluido e dados apagados: {name}."
+                    if delete_data
+                    else f"Perfil excluido do painel, dados preservados: {name}."
+                )
+            self.save_all()
+            try:
+                win.destroy()
+            except tk.TclError:
+                pass
+            self.refresh()
+
+        def worker() -> None:
+            deleted_now = not delete_data or not profile_dir.exists()
+            error: Exception | None = None
+            try:
+                stop_profile(profile, wait_seconds=1.5 if delete_data else 0.8)
+                if delete_data and profile_dir.exists():
+                    for attempt in range(2):
+                        deleted_now, _last_error = try_delete_profile_dir(profile_dir, self.state, name)
+                        if deleted_now:
+                            break
+                        stop_profile(profile, wait_seconds=0.5)
+                        if attempt == 0:
+                            time.sleep(0.2)
+            except Exception as exc:
+                error = exc
+            self.post_ui_action(lambda: finish(error, deleted_now))
+
+        action_log(f"remove-profile-background slug={slug} delete_data={delete_data}")
+        if progress:
+            progress.configure(text="Excluindo em segundo plano... o painel continua responsivo.", fg=YELLOW)
+        threading.Thread(target=worker, daemon=True).start()
 
     def remove_profile(self, profile: dict, delete_data: bool = False) -> None:
         slug = profile.get("slug")
