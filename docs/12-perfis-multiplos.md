@@ -76,7 +76,7 @@ O comando instala o painel, compila a bridge de perfis, cria o atalho e registra
 7. Salve.
 8. Selecione o perfil e clique em **Conectar QR**.
 9. Escaneie o QR no WhatsApp do celular.
-10. Quando aparecer autenticado, clique em **Voltar ao painel**.
+10. Depois de autenticar, a janela volta ao painel automaticamente; se quiser, clique em **Voltar ao painel**.
 11. O perfil segue sincronizando em background.
 
 Se o perfil ja estiver autenticado, o botao **Conectar QR** nao abre outro QR. Ele avisa que a sessao ja existe; se a bridge estiver fechada, inicia uma sincronizacao manual.
@@ -101,7 +101,7 @@ O painel nao precisa trazer projetos pre-cadastrados. Ao digitar um projeto novo
 Depois que um perfil autentica:
 
 - a primeira sincronizacao entra em modo inteligente;
-- ela roda por no minimo 60 minutos;
+- ela roda por no minimo 10 minutos;
 - ela pode ficar aberta por ate 24 horas;
 - ela pode fechar antes quando a ultima mensagem local estiver perto do horario atual e o ritmo de importacao ficar baixo por tempo suficiente;
 - depois disso, entra em sincronizacoes random.
@@ -109,10 +109,10 @@ Depois que um perfil autentica:
 Valores padrao:
 
 ```text
-minimo primeira sync: 60 min
+minimo primeira sync: 10 min
 lag maximo para considerar perto do agora: 45 min
 ritmo maximo para considerar estabilizado: 20 msgs/min
-tempo estavel antes de fechar: 30 min
+tempo estavel antes de fechar: 5 min
 limite maximo: 24 h
 ```
 

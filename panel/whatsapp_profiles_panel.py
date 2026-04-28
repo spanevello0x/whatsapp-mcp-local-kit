@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from tkinter import filedialog
 from tkinter import messagebox as mb
+from tkinter import simpledialog
 from tkinter import ttk
 import tkinter as tk
 import urllib.request
@@ -47,12 +48,113 @@ YELLOW = "#d97706"
 BLUE = "#2563eb"
 PURPLE = "#6d28d9"
 GRAY = "#334155"
+BUTTON_DISABLED_BG = "#243044"
+BUTTON_DISABLED_FG = "#8b95a6"
+BUTTON_HOVER_TINT = "#ffffff"
 
 STATUS_COLORS = {
     "running": (22, 163, 74, 255),
     "waiting": (217, 119, 6, 255),
     "stopped": (107, 114, 128, 255),
 }
+
+
+def blend_hex(color: str, overlay: str, alpha: float) -> str:
+    base = color.lstrip("#")
+    top = overlay.lstrip("#")
+    if len(base) != 6 or len(top) != 6:
+        return color
+    values = []
+    for index in (0, 2, 4):
+        b = int(base[index : index + 2], 16)
+        t = int(top[index : index + 2], 16)
+        values.append(round(b * (1 - alpha) + t * alpha))
+    return "#" + "".join(f"{value:02x}" for value in values)
+
+
+class ActionButton(tk.Label):
+    """Theme-independent button for macOS, where native tk.Button ignores colors."""
+
+    def __init__(self, parent: tk.Widget, text: str, color: str, command, width: int | None = None) -> None:
+        self._normal_bg = color
+        self._hover_bg = blend_hex(color, BUTTON_HOVER_TINT, 0.12)
+        self._pressed_bg = blend_hex(color, "#000000", 0.10)
+        self._command = command
+        self._enabled = True
+        super().__init__(
+            parent,
+            text=text,
+            bg=self._normal_bg,
+            fg=TEXT,
+            font=("Segoe UI", 9, "bold"),
+            padx=12,
+            pady=7,
+            width=width or 0,
+            anchor=tk.CENTER,
+            cursor="pointinghand",
+            relief=tk.FLAT,
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=blend_hex(color, "#000000", 0.18),
+            highlightcolor=blend_hex(color, "#000000", 0.18),
+            takefocus=True,
+        )
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Return>", self._on_key)
+        self.bind("<space>", self._on_key)
+
+    def configure(self, cnf=None, **kwargs):  # type: ignore[override]
+        if cnf:
+            kwargs.update(cnf)
+        if "command" in kwargs:
+            self._command = kwargs.pop("command")
+        if "state" in kwargs:
+            state = kwargs.pop("state")
+            self._enabled = state != tk.DISABLED and str(state) != "disabled"
+            kwargs["cursor"] = "pointinghand" if self._enabled else "arrow"
+        if "bg" in kwargs or "background" in kwargs:
+            color = kwargs.pop("bg", kwargs.pop("background", self._normal_bg))
+            self._normal_bg = color
+            self._hover_bg = blend_hex(color, BUTTON_HOVER_TINT, 0.12)
+            self._pressed_bg = blend_hex(color, "#000000", 0.10)
+            kwargs["highlightbackground"] = blend_hex(color, "#000000", 0.18)
+            kwargs["highlightcolor"] = blend_hex(color, "#000000", 0.18)
+        if self._enabled:
+            kwargs.setdefault("bg", self._normal_bg)
+            kwargs.setdefault("fg", TEXT)
+        else:
+            kwargs.setdefault("bg", BUTTON_DISABLED_BG)
+            kwargs.setdefault("fg", BUTTON_DISABLED_FG)
+        return super().configure(**kwargs)
+
+    config = configure
+
+    def _on_enter(self, _event=None) -> None:
+        if self._enabled:
+            super().configure(bg=self._hover_bg)
+
+    def _on_leave(self, _event=None) -> None:
+        super().configure(bg=self._normal_bg if self._enabled else BUTTON_DISABLED_BG)
+
+    def _on_press(self, _event=None) -> None:
+        if self._enabled:
+            super().configure(bg=self._pressed_bg)
+
+    def _on_release(self, event=None) -> None:
+        if not self._enabled:
+            return
+        inside = event is None or (0 <= event.x <= self.winfo_width() and 0 <= event.y <= self.winfo_height())
+        super().configure(bg=self._hover_bg if inside else self._normal_bg)
+        if inside and self._command:
+            self._command()
+
+    def _on_key(self, _event=None) -> str:
+        if self._enabled and self._command:
+            self._command()
+        return "break"
 
 OLD_AUTOCREATED_PROJECT_SLUGS = {"geral", "vendedores", "pessoal", "administrativo"}
 WINDOWS_RESERVED_NAMES = {
@@ -107,21 +209,22 @@ MAC_LAUNCH_AGENT_DIR = Path.home() / "Library" / "LaunchAgents"
 MAC_LAUNCH_AGENT = MAC_LAUNCH_AGENT_DIR / "com.whatsapp-mcp.tray.plist"
 
 INITIAL_SYNC_HOURS = int(CONFIG.get("initial_sync_hours", 24))
-INITIAL_SYNC_MIN_SECONDS = int(CONFIG.get("initial_sync_min_minutes", 60)) * 60
-INITIAL_SYNC_IDLE_SECONDS = int(CONFIG.get("initial_sync_idle_minutes", 15)) * 60
-INITIAL_SYNC_STABLE_SECONDS = int(CONFIG.get("initial_sync_stable_minutes", 30)) * 60
+INITIAL_SYNC_MIN_SECONDS = int(CONFIG.get("initial_sync_min_minutes", 10)) * 60
+INITIAL_SYNC_IDLE_SECONDS = int(CONFIG.get("initial_sync_idle_minutes", 3)) * 60
+INITIAL_SYNC_STABLE_SECONDS = int(CONFIG.get("initial_sync_stable_minutes", 5)) * 60
 INITIAL_SYNC_LIVE_LAG_SECONDS = int(CONFIG.get("initial_sync_live_lag_minutes", 45)) * 60
 INITIAL_SYNC_LIVE_RATE_PER_MINUTE = float(CONFIG.get("initial_sync_live_rate_per_minute", 20))
 SYNC_MIN_SECONDS = int(CONFIG.get("sync_min_minutes", 5)) * 60
 SYNC_IDLE_SECONDS = int(CONFIG.get("sync_idle_minutes", 3)) * 60
 SYNC_MAX_SECONDS = int(CONFIG.get("sync_max_minutes", 25)) * 60
-RANDOM_SYNC_MIN_SECONDS = int(CONFIG.get("random_sync_min_minutes", 15)) * 60
-RANDOM_SYNC_MAX_SECONDS = int(CONFIG.get("random_sync_max_minutes", 45)) * 60
+RANDOM_SYNC_MIN_SECONDS = int(CONFIG.get("random_sync_min_minutes", 10)) * 60
+RANDOM_SYNC_MAX_SECONDS = int(CONFIG.get("random_sync_max_minutes", 50)) * 60
 STARTUP_RESUME_SYNC_ENABLED = str(CONFIG.get("startup_resume_sync", True)).strip().lower() not in {"0", "false", "no", "off"}
 STARTUP_RESUME_INITIAL_DELAY_SECONDS = int(CONFIG.get("startup_resume_initial_delay_seconds", 30))
 STARTUP_RESUME_STAGGER_SECONDS = int(CONFIG.get("startup_resume_stagger_seconds", 120))
 STARTUP_RESUME_JITTER_SECONDS = int(CONFIG.get("startup_resume_jitter_seconds", 45))
 STARTUP_RESUME_MIN_INTERVAL_SECONDS = int(CONFIG.get("startup_resume_min_interval_minutes", 5)) * 60
+QR_AUTH_AUTO_RETURN_MS = int(CONFIG.get("qr_auth_auto_return_seconds", 3)) * 1000
 
 
 def now_iso() -> str:
@@ -284,6 +387,24 @@ def apply_window_icon(window: tk.Misc) -> None:
             pass
 
 
+def activate_macos_app() -> None:
+    if not IS_MAC:
+        return
+    try:
+        from AppKit import NSApplicationActivateIgnoringOtherApps, NSRunningApplication
+
+        NSRunningApplication.currentApplication().activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    except Exception:
+        try:
+            subprocess.Popen(
+                ["osascript", "-e", 'tell application "WhatsApp MCP Tray" to activate'],
+                capture_output=True,
+                text=True,
+            )
+        except Exception:
+            pass
+
+
 def center_child_window(window: tk.Toplevel, parent: tk.Misc, width: int, height: int) -> None:
     try:
         parent.update_idletasks()
@@ -328,7 +449,21 @@ def format_phone_number(value: str) -> str:
 
 
 def jid_to_phone(value: str) -> str:
-    return format_phone_number((value or "").split("@", 1)[0])
+    user = (value or "").split("@", 1)[0].split(":", 1)[0]
+    return format_phone_number(user)
+
+
+def should_replace_detected_number(current: str, detected: str) -> bool:
+    current_digits = phone_digits(current)
+    detected_digits = phone_digits(detected)
+    if not detected_digits:
+        return False
+    if not current_digits:
+        return True
+    if current_digits == detected_digits:
+        return False
+    extra_digits = len(current_digits) - len(detected_digits)
+    return current_digits.startswith(detected_digits) and 0 < extra_digits <= 4
 
 
 def profile_configured(profile: dict) -> bool:
@@ -348,6 +483,10 @@ def profile_is_starter(profile: dict) -> bool:
 
 def normalize_project_name(name: str) -> str:
     return " ".join((name or "").strip().split())
+
+
+def normalize_profile_name(name: str) -> str:
+    return " ".join((name or "").replace("\u00b6", "1").strip().split())
 
 
 def safe_folder_name(value: str, fallback: str = "Projeto") -> str:
@@ -456,6 +595,8 @@ def ensure_profiles_config() -> dict:
     for project in config.get("projects", []):
         ensure_project_folder(config, project)
     for profile in config.get("profiles", []):
+        if profile.get("name"):
+            profile["name"] = normalize_profile_name(str(profile.get("name", "")))
         if profile_is_starter(profile):
             continue
         if not profile.get("project_slug"):
@@ -1008,8 +1149,8 @@ class ProfileDialog:
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.grid(row=8, column=0, columnspan=3, sticky="e", pady=(12, 0))
-        tk.Button(buttons, text="Cancelar", command=self.win.destroy).pack(side=tk.RIGHT, padx=4)
-        tk.Button(buttons, text="Salvar", bg=GREEN, fg=TEXT, command=self.save).pack(side=tk.RIGHT, padx=4)
+        app._button(buttons, "Cancelar", GRAY, self.win.destroy, width=10).pack(side=tk.RIGHT, padx=4)
+        app._button(buttons, "Salvar", GREEN, self.save, width=10).pack(side=tk.RIGHT, padx=4)
 
         frame.columnconfigure(1, weight=1)
         center_child_window(self.win, app.root, 680, 430)
@@ -1041,7 +1182,7 @@ class ProfileDialog:
         self.number.insert(0, formatted)
 
     def save(self) -> None:
-        name = self.name.get().strip()
+        name = normalize_profile_name(self.name.get())
         number = format_phone_number(self.number.get().strip())
         description = self.description.get().strip()
         project_text = normalize_project_name(self.project.get())
@@ -1159,6 +1300,7 @@ class ProfilesApp:
             pass
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.root.bind("<<ShowPanel>>", lambda _event: self.show())
+        self.install_macos_reopen_handler()
         self._ui()
         try:
             self.root.update_idletasks()
@@ -1172,6 +1314,15 @@ class ProfilesApp:
         self.root.after(500, self.startup_ready)
         self.root.after(1000, self.heartbeat)
         self.root.after(POLL_MS, self.tick)
+
+    def install_macos_reopen_handler(self) -> None:
+        if not IS_MAC:
+            return
+        try:
+            self.root.createcommand("whatsapp_mcp_reopen", self.show)
+            self.root.tk.eval("proc ::tk::mac::ReopenApplication {} {whatsapp_mcp_reopen}")
+        except tk.TclError as exc:
+            action_log(f"mac-reopen-handler-error {exc}")
 
     def _ui(self) -> None:
         top = tk.Frame(self.root, bg=PANEL, padx=16, pady=12)
@@ -1306,11 +1457,8 @@ class ProfilesApp:
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-    def _button(self, parent: tk.Widget, text: str, color: str, command, width: int | None = None) -> tk.Button:
-        kwargs = {"text": text, "bg": color, "fg": TEXT, "font": ("Segoe UI", 9, "bold"), "command": command}
-        if width:
-            kwargs["width"] = width
-        return tk.Button(parent, **kwargs)
+    def _button(self, parent: tk.Widget, text: str, color: str, command, width: int | None = None) -> ActionButton:
+        return ActionButton(parent, text, color, command, width)
 
     def primary_selected_action(self) -> None:
         profile = self.selected_profile()
@@ -1445,12 +1593,16 @@ class ProfilesApp:
         initial_pending_count = 0
         for profile in self.configured_profiles():
             state = self.state_for(profile["slug"])
+            initial_until = parse_iso(state.get("initial_sync_until"))
+            initial_pending = bool(initial_until and not state.get("initial_sync_completed_at"))
+            if state.get("paused") and initial_pending and not state.get("paused_by_user_at"):
+                state["paused"] = False
+                state["last_action"] = "Pausa temporaria limpa no startup; primeira sync inteligente retomada."
             if state.get("paused") or profile_running(profile):
                 continue
             if not self.session_ready(profile, state):
                 continue
-            initial_until = parse_iso(state.get("initial_sync_until"))
-            if initial_until and not state.get("initial_sync_completed_at"):
+            if initial_pending:
                 state["startup_resume_requested_at"] = now.isoformat(timespec="seconds")
                 initial_pending_count += 1
                 continue
@@ -1568,7 +1720,7 @@ class ProfilesApp:
                 self.selected_slug = row_id
         self.primary_selected_action()
 
-    def configure_button(self, button: tk.Button, text: str | None = None, color: str | None = None, command=None, enabled: bool = True) -> None:
+    def configure_button(self, button: tk.Widget, text: str | None = None, color: str | None = None, command=None, enabled: bool = True) -> None:
         changes = {"state": tk.NORMAL if enabled else tk.DISABLED}
         if text is not None:
             changes["text"] = text
@@ -1725,7 +1877,7 @@ class ProfilesApp:
             if chosen:
                 path_var.set(chosen)
 
-        tk.Button(row, text="Escolher", command=pick).pack(side=tk.RIGHT, padx=(8, 0))
+        self._button(row, "Escolher", BLUE, pick, width=10).pack(side=tk.RIGHT, padx=(8, 0))
 
         preview = tk.Label(frame, text="", bg=BG, fg=MUTED, font=("Segoe UI", 8), justify=tk.LEFT, wraplength=560)
         preview.pack(anchor="w", pady=(10, 0))
@@ -1739,7 +1891,7 @@ class ProfilesApp:
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.pack(fill=tk.X, pady=(18, 0))
-        tk.Button(buttons, text="Cancelar", command=win.destroy).pack(side=tk.RIGHT, padx=4)
+        self._button(buttons, "Cancelar", GRAY, win.destroy, width=10).pack(side=tk.RIGHT, padx=4)
 
         def save() -> None:
             selected = path_var.get().strip()
@@ -1770,7 +1922,7 @@ class ProfilesApp:
                 self.root.after(100, after)
 
         label = "Continuar" if first_time else "Salvar"
-        tk.Button(buttons, text=label, bg=GREEN, fg=TEXT, command=save).pack(side=tk.RIGHT, padx=4)
+        self._button(buttons, label, GREEN, save, width=10).pack(side=tk.RIGHT, padx=4)
         center_child_window(win, self.root, 640, 300)
         win.deiconify()
         win.lift(self.root)
@@ -1837,7 +1989,7 @@ class ProfilesApp:
         grid.columnconfigure(0, weight=1)
         grid.columnconfigure(1, weight=1)
 
-        tk.Button(frame, text="Fechar configuracoes", command=win.destroy).pack(anchor="e", pady=(14, 0))
+        self._button(frame, "Fechar configuracoes", GRAY, win.destroy, width=18).pack(anchor="e", pady=(14, 0))
         center_child_window(win, self.root, 600, 330)
         win.deiconify()
         win.lift(self.root)
@@ -1930,14 +2082,16 @@ class ProfilesApp:
         win.withdraw()
         apply_window_icon(win)
         self.qr_windows[slug] = win
-        win.title(f"Conectar QR - {profile.get('name', slug)}")
+        display_name = normalize_profile_name(str(profile.get("name", slug)))
+        win.title(f"Conectar QR - {display_name}")
         win.configure(bg=BG)
         win.transient(self.root)
         win.protocol("WM_DELETE_WINDOW", win.withdraw)
 
         frame = tk.Frame(win, bg=BG, padx=16, pady=14)
         frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text=f"Conectar {profile.get('name', slug)}", bg=BG, fg=TEXT, font=("Segoe UI", 15, "bold")).pack(anchor="w")
+        title_label = tk.Label(frame, text=f"Conectar {display_name}", bg=BG, fg=TEXT, font=("Segoe UI", 15, "bold"))
+        title_label.pack(anchor="w")
         status = tk.Label(frame, text="Abrindo bridge e aguardando QR...", bg=BG, fg=YELLOW, font=("Segoe UI", 10, "bold"))
         status.pack(anchor="w", pady=(4, 6))
         guidance = tk.Label(
@@ -1975,15 +2129,22 @@ class ProfilesApp:
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.pack(fill=tk.X, pady=(10, 0))
-        primary_return = tk.Button(buttons, text="Voltar ao painel", bg=GREEN, fg=TEXT, font=("Segoe UI", 12, "bold"), command=lambda: (win.withdraw(), self.show()))
+        def return_to_panel() -> None:
+            try:
+                win.withdraw()
+            except tk.TclError:
+                return
+            self.show()
+
+        primary_return = self._button(buttons, "Voltar ao painel", GREEN, return_to_panel, width=24)
         primary_return.pack(side=tk.TOP, pady=(0, 12), ipadx=42, ipady=8)
         secondary_buttons = tk.Frame(buttons, bg=BG)
         secondary_buttons.pack(fill=tk.X)
-        tk.Button(secondary_buttons, text="Ocultar", command=win.withdraw).pack(side=tk.LEFT, padx=(0, 6))
-        tk.Button(secondary_buttons, text="Cadastrar outro perfil", command=lambda: (win.withdraw(), self.show(), self.new_profile())).pack(side=tk.LEFT, padx=6)
-        details_button = tk.Button(buttons, text="Detalhes tecnicos")
+        self._button(secondary_buttons, "Ocultar", GRAY, win.withdraw, width=10).pack(side=tk.LEFT, padx=(0, 6))
+        self._button(secondary_buttons, "Cadastrar outro perfil", PURPLE, lambda: (win.withdraw(), self.show(), self.new_profile()), width=20).pack(side=tk.LEFT, padx=6)
+        details_button = self._button(buttons, "Detalhes tecnicos", GRAY, None, width=16)
         details_button.pack(in_=secondary_buttons, side=tk.LEFT, padx=6)
-        tk.Button(secondary_buttons, text="Pausar sync", bg=RED, fg=TEXT, command=lambda: self.stop_qr_profile(profile, win, confirm=True)).pack(side=tk.RIGHT, padx=(6, 0))
+        self._button(secondary_buttons, "Pausar sync", RED, lambda: self.stop_qr_profile(profile, win, confirm=True), width=12).pack(side=tk.RIGHT, padx=(6, 0))
 
         def toggle_details() -> None:
             details_visible["value"] = not details_visible["value"]
@@ -2013,17 +2174,22 @@ class ProfilesApp:
                 details_visible["value"] = False
             except tk.TclError:
                 pass
+            display_name = normalize_profile_name(str(profile.get("name", slug)))
+            win.title(f"Sincronizando - {display_name}")
+            title_label.configure(text=f"{display_name} conectado")
             status.configure(text="Autenticado. Sync inteligente em andamento.", fg=GREEN)
             until = fmt_dt(state.get("initial_sync_until"))
             if until == "-":
                 until = f"no maximo {INITIAL_SYNC_HOURS}h a partir de agora"
             guidance.configure(
                 text=(
-                    f"Clique em Voltar ao painel. Este perfil segue sincronizando em background ate estabilizar, com limite maximo em {until}. "
-                    "O painel so fecha a bridge quando a ultima mensagem estiver perto do agora e o ritmo de importacao cair por tempo suficiente."
+                    f"Voltando ao painel automaticamente. Este perfil segue sincronizando em background ate estabilizar, com limite maximo em {until}. "
+                    "A bridge fecha sozinha quando a ultima mensagem estiver perto do agora e o ritmo de importacao cair por tempo suficiente."
                 ),
                 fg=GREEN,
             )
+            primary_return.configure(text="Voltar ao painel agora", bg=GREEN, font=("Segoe UI", 12, "bold"))
+            win.after(QR_AUTH_AUTO_RETURN_MS, return_to_panel)
 
         def append_line(line: str) -> None:
             clean = strip_ansi(line.rstrip())
@@ -2033,7 +2199,7 @@ class ProfilesApp:
             log_box.see(tk.END)
             if clean.startswith("SELF_JID:"):
                 detected = jid_to_phone(clean.split(":", 1)[1].strip())
-                if detected and not profile.get("number"):
+                if detected and should_replace_detected_number(str(profile.get("number") or ""), detected):
                     profile["number"] = detected
                     profile["number_digits"] = phone_digits(detected)
                     profile["updated_at"] = now_iso()
@@ -2125,6 +2291,7 @@ class ProfilesApp:
         stop_profile(profile)
         state = self.state_for(profile["slug"])
         state["paused"] = True
+        state["paused_by_user_at"] = now_iso()
         state["current_sync_started_at"] = None
         self.save_all()
         self.last_action = f"Sync pausada para {profile.get('name')}."
@@ -2214,7 +2381,11 @@ class ProfilesApp:
         option_delete.pack(fill=tk.X, pady=(0, 4))
         tk.Label(
             frame,
-            text=f"Se marcado, apaga sessao, mensagens, logs e arquivos baixados.\nPasta: {profile_dir}\nDB: {messages_db}",
+            text=(
+                "Se marcado, apaga definitivamente sessao, mensagens, logs e arquivos baixados. "
+                "Antes de apagar, o painel vai pedir que voce digite o nome exato do perfil.\n"
+                f"Pasta: {profile_dir}\nDB: {messages_db}"
+            ),
             bg=BG,
             fg=MUTED,
             font=("Segoe UI", 9),
@@ -2224,13 +2395,13 @@ class ProfilesApp:
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.pack(fill=tk.X, pady=(4, 0))
-        tk.Button(buttons, text="Cancelar", command=win.destroy).pack(side=tk.RIGHT, padx=(8, 0))
-        tk.Button(
+        self._button(buttons, "Cancelar", GRAY, win.destroy, width=10).pack(side=tk.RIGHT, padx=(8, 0))
+        self._button(
             buttons,
-            text="Excluir perfil",
-            bg=RED,
-            fg=TEXT,
-            command=lambda: self.confirm_remove_profile(profile, win, delete_data=bool(delete_data.get())),
+            "Excluir perfil",
+            RED,
+            lambda: self.confirm_remove_profile(profile, win, delete_data=bool(delete_data.get())),
+            width=14,
         ).pack(side=tk.RIGHT, padx=8)
 
         center_child_window(win, self.root, 660, 420)
@@ -2260,6 +2431,21 @@ class ProfilesApp:
                 parent=win,
             )
             if not ok:
+                return
+            typed_name = simpledialog.askstring(
+                "Confirmar exclusao definitiva",
+                (
+                    "Para apagar os dados locais, digite exatamente o nome do perfil:\n\n"
+                    f"{name}"
+                ),
+                parent=win,
+            )
+            if typed_name != name:
+                mb.showinfo(
+                    "Apagar dados locais",
+                    "Exclusao cancelada. O nome digitado nao bate com o nome do perfil.",
+                    parent=win,
+                )
                 return
         else:
             ok = mb.askyesno(
@@ -2340,6 +2526,7 @@ class ProfilesApp:
             return
         state = self.state_for(profile["slug"])
         state["paused"] = False
+        state.pop("paused_by_user_at", None)
         if not profile_configured(profile):
             self.last_action = "Preencha os dados do perfil antes de retomar."
         elif self.session_ready(profile, state):
@@ -2378,14 +2565,14 @@ class ProfilesApp:
     def pause_all(self) -> None:
         if mb.askyesno("Pausar todos", "Pausar e fechar todos os perfis?"):
             for profile in self.profiles():
-                self.pause_profile(profile)
+                self.pause_profile(profile, user_requested=True)
             self.last_action = "Todos os perfis foram pausados."
             self.refresh()
 
     def pause_all_without_confirm(self) -> None:
         for profile in self.profiles():
-            self.pause_profile(profile)
-        self.last_action = "Todos os perfis foram pausados."
+            self.stop_profile_for_shutdown(profile)
+        self.last_action = "Sincronizacoes paradas para fechamento do sistema; serao retomadas no proximo startup."
 
     def toggle_autostart(self) -> None:
         state, message = autostart_state()
@@ -2408,14 +2595,21 @@ class ProfilesApp:
             mb.showwarning("Auto-start", result)
         self.refresh()
 
-    def pause_profile(self, profile: dict) -> None:
+    def pause_profile(self, profile: dict, user_requested: bool = True) -> None:
         state = self.state_for(profile["slug"])
         state["paused"] = True
+        if user_requested:
+            state["paused_by_user_at"] = now_iso()
         state["current_sync_started_at"] = None
         state["next_sync_at"] = None
         stop_profile(profile)
         self.save_all()
         self.last_action = f"Perfil pausado: {profile.get('name')}."
+
+    def stop_profile_for_shutdown(self, profile: dict) -> None:
+        state = self.state_for(profile["slug"])
+        state["current_sync_started_at"] = None
+        stop_profile(profile)
 
     def start_sync(self, profile: dict, manual: bool = False, quiet: bool = False) -> None:
         if not profile_configured(profile):
@@ -2501,7 +2695,7 @@ class ProfilesApp:
         if not detected:
             return False
         changed = False
-        if not profile.get("number"):
+        if should_replace_detected_number(str(profile.get("number") or ""), detected):
             profile["number"] = detected
             profile["number_digits"] = phone_digits(detected)
             changed = True
@@ -2524,9 +2718,13 @@ class ProfilesApp:
             if not session_db.exists():
                 return False
             missing_identity = not profile.get("number") or not profile.get("whatsapp_push_name")
+            current_digits = phone_digits(str(profile.get("number") or ""))
+            number_looks_too_long = current_digits.startswith("55") and len(current_digits) > 13
             last_identity_sync = parse_iso(state.get("last_identity_sync_at"))
-            should_sync_identity = missing_identity and (
-                not last_identity_sync or (datetime.now() - last_identity_sync).total_seconds() > 600
+            should_sync_identity = number_looks_too_long or (
+                missing_identity and (
+                    not last_identity_sync or (datetime.now() - last_identity_sync).total_seconds() > 600
+                )
             )
             if should_sync_identity and self.sync_profile_identity_from_session(profile):
                 state["last_identity_sync_at"] = now_iso()
@@ -2639,13 +2837,19 @@ class ProfilesApp:
                 live_like_since = parse_iso(state.get("initial_live_like_since"))
                 live_like_for = (now - live_like_since).total_seconds() if live_like_since else 0
                 state["initial_live_like_seconds"] = int(max(0, live_like_for))
-                if elapsed >= INITIAL_SYNC_MIN_SECONDS and live_like_for >= INITIAL_SYNC_STABLE_SECONDS:
+                min_elapsed = elapsed >= INITIAL_SYNC_MIN_SECONDS
+                stable_enough = bool(idle >= INITIAL_SYNC_IDLE_SECONDS and live_like_for >= INITIAL_SYNC_STABLE_SECONDS)
+                safely_caught_up = bool(live_like and min_elapsed and stable_enough)
+                state["initial_min_elapsed"] = bool(min_elapsed)
+                state["initial_stable_enough"] = bool(stable_enough)
+                state["initial_safely_caught_up"] = bool(safely_caught_up)
+                if safely_caught_up:
                     state["initial_sync_completed_at"] = now.isoformat(timespec="seconds")
                     state["last_sync_at"] = now.isoformat(timespec="seconds")
                     state["current_sync_started_at"] = None
                     state["sync_mode"] = "random"
                     reason = "sem mensagens na conta" if empty_quiet else (
-                        f"ultima msg a {human_duration(lag)} do agora; ritmo {rate:.1f}/min por {human_duration(live_like_for)}"
+                        f"ultima msg a {human_duration(lag)} do agora; ritmo {rate:.1f}/min; sem crescimento por {human_duration(idle)}; estavel por {human_duration(live_like_for)}"
                     )
                     state["initial_sync_completed_reason"] = reason
                     stop_profile(profile)
@@ -2942,6 +3146,7 @@ class ProfilesApp:
         action_log("show-start")
         self.root.deiconify()
         self.root.state("normal")
+        activate_macos_app()
         try:
             self.root.attributes("-topmost", True)
         except tk.TclError:
@@ -2956,6 +3161,9 @@ class ProfilesApp:
             self.root.after(500, lambda: self.root.attributes("-topmost", False))
         except tk.TclError:
             pass
+        if IS_MAC:
+            self.root.after(100, activate_macos_app)
+            self.root.after(150, self.root.lift)
         self.root.after(300, self.ensure_base_folder_confirmed)
         action_log(f"show-end state={self.root.state()}")
 

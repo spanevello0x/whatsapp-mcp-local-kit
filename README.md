@@ -117,7 +117,7 @@ Depois abra **WhatsApp MCP Tray.app** na Mesa/Desktop. O arquivo `.command` tamb
 3. Informe o projeto, nome do perfil e descricao. O numero e opcional; se ficar vazio, o QR pode identificar depois.
 4. Clique em **Conectar QR**.
 5. Escaneie o QR no WhatsApp do celular.
-6. Quando aparecer autenticado, clique em **Voltar ao painel**.
+6. Depois de autenticar, a janela volta ao painel automaticamente; se quiser, clique em **Voltar ao painel**.
 7. Pode ocultar na bandeja. A sincronizacao continua em background.
 
 Se o perfil ja estiver autenticado, **Conectar QR** nao gera outro QR: o painel avisa que a sessao ja existe e, se a bridge estiver fechada, inicia uma sincronizacao manual.
@@ -147,7 +147,7 @@ Na primeira autenticacao de cada perfil, o painel inicia uma **primeira sync int
 
 Por padrao, ela:
 
-- roda por no minimo 60 minutos;
+- roda por no minimo 10 minutos;
 - pode ficar aberta por ate 24 horas;
 - fecha antes das 24 horas se a ultima mensagem local estiver perto do horario atual e o ritmo de importacao cair por tempo suficiente;
 - depois agenda sincronizacoes random.
@@ -155,6 +155,8 @@ Por padrao, ela:
 Depois da primeira sincronizacao, cada perfil abre a porta local somente durante janelas de sync manual ou random. Fora dessas janelas, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP.
 
 Quando o painel inicia com o Windows ou e aberto depois de ficar encerrado, ele agenda uma **sync de retomada** para perfis autenticados. Os perfis sao escalonados, por padrao um a cada 2 minutos, para atualizar a base sem abrir todas as bridges ao mesmo tempo.
+
+Pausa manual e respeitada depois de reiniciar. Fechar o sistema ou reiniciar o computador apenas para os processos; no proximo login, perfis autenticados que ainda precisam sincronizar retomam normalmente.
 
 Downloads de midia fisica ainda exigem a bridge do perfil aberta, porque o arquivo precisa ser baixado pelo WhatsApp Web.
 

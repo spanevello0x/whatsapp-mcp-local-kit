@@ -23,10 +23,10 @@ Por isso, o painel combina:
 Padrao:
 
 ```text
-minimo aberta: 60 minutos
+minimo aberta: 10 minutos
 ultima mensagem perto do agora: ate 45 minutos de atraso
 ritmo baixo: ate 20 mensagens/minuto
-tempo estavel: 30 minutos
+tempo estavel: 5 minutos
 limite maximo: 24 horas
 ```
 
@@ -64,6 +64,8 @@ anti-duplicacao: nao reagenda se o painel reiniciar varias vezes em menos de 5 m
 
 Perfis ainda em primeira sync inteligente continuam pela regra da primeira sync. Perfis sem QR/login continuam aguardando QR.
 
+Se o usuario pausou manualmente um perfil, o painel respeita a pausa no proximo boot. Se o sistema apenas foi fechado ou o computador reiniciou, a pausa temporaria de fechamento nao bloqueia a retomada.
+
 ## Configuracao
 
 Arquivo:
@@ -79,10 +81,10 @@ Exemplo:
   "profiles_mode": true,
   "profiles_dir": "C:\\Users\\SEU_USUARIO\\Documents\\WhatsApp MCP Profiles",
   "initial_sync_hours": 24,
-  "initial_sync_min_minutes": 60,
+  "initial_sync_min_minutes": 10,
   "initial_sync_live_lag_minutes": 45,
   "initial_sync_live_rate_per_minute": 20,
-  "initial_sync_stable_minutes": 30,
+  "initial_sync_stable_minutes": 5,
   "sync_min_minutes": 5,
   "sync_idle_minutes": 3,
   "sync_max_minutes": 25,
