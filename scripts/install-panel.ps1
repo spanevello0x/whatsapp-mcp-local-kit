@@ -54,6 +54,11 @@ $configMap = [ordered]@{
   sync_extend_minutes = 10
   random_sync_min_minutes = 10
   random_sync_max_minutes = 50
+  startup_resume_sync = $true
+  startup_resume_initial_delay_seconds = 30
+  startup_resume_stagger_seconds = 120
+  startup_resume_jitter_seconds = 45
+  startup_resume_min_interval_minutes = 5
 }
 if ($ProfilesMode) {
   $profilesConfigPath = Join-Path $ProfilesDir "profiles.json"

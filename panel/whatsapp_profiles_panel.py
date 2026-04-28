@@ -116,6 +116,11 @@ SYNC_IDLE_SECONDS = int(CONFIG.get("sync_idle_minutes", 3)) * 60
 SYNC_MAX_SECONDS = int(CONFIG.get("sync_max_minutes", 25)) * 60
 RANDOM_SYNC_MIN_SECONDS = int(CONFIG.get("random_sync_min_minutes", 15)) * 60
 RANDOM_SYNC_MAX_SECONDS = int(CONFIG.get("random_sync_max_minutes", 45)) * 60
+STARTUP_RESUME_SYNC_ENABLED = str(CONFIG.get("startup_resume_sync", True)).strip().lower() not in {"0", "false", "no", "off"}
+STARTUP_RESUME_INITIAL_DELAY_SECONDS = int(CONFIG.get("startup_resume_initial_delay_seconds", 30))
+STARTUP_RESUME_STAGGER_SECONDS = int(CONFIG.get("startup_resume_stagger_seconds", 120))
+STARTUP_RESUME_JITTER_SECONDS = int(CONFIG.get("startup_resume_jitter_seconds", 45))
+STARTUP_RESUME_MIN_INTERVAL_SECONDS = int(CONFIG.get("startup_resume_min_interval_minutes", 5)) * 60
 
 
 def now_iso() -> str:
@@ -1333,12 +1338,60 @@ class ProfilesApp:
             if not self.start_minimized:
                 self.show()
             self._control()
+            self.schedule_startup_resume()
             self._tray()
             if not self.start_minimized:
                 self.root.after(600, self.ensure_base_folder_confirmed)
             action_log("startup-ready-end")
         except Exception as exc:
             action_log(f"startup-ready-error {exc}")
+
+    def schedule_startup_resume(self) -> None:
+        if not STARTUP_RESUME_SYNC_ENABLED:
+            return
+        now = datetime.now()
+        last_resume = parse_iso(self.state.get("last_startup_resume_at"))
+        if last_resume and (now - last_resume).total_seconds() < STARTUP_RESUME_MIN_INTERVAL_SECONDS:
+            return
+
+        eligible: list[tuple[dict, dict]] = []
+        initial_pending_count = 0
+        for profile in self.configured_profiles():
+            state = self.state_for(profile["slug"])
+            if state.get("paused") or profile_running(profile):
+                continue
+            if not self.session_ready(profile, state):
+                continue
+            initial_until = parse_iso(state.get("initial_sync_until"))
+            if initial_until and not state.get("initial_sync_completed_at"):
+                state["startup_resume_requested_at"] = now.isoformat(timespec="seconds")
+                initial_pending_count += 1
+                continue
+            eligible.append((profile, state))
+
+        def last_sync_key(item: tuple[dict, dict]) -> datetime:
+            return parse_iso(item[1].get("last_sync_at")) or datetime.min
+
+        eligible.sort(key=last_sync_key)
+        for index, (_profile, state) in enumerate(eligible):
+            jitter = random.randint(0, max(0, STARTUP_RESUME_JITTER_SECONDS))
+            delay = STARTUP_RESUME_INITIAL_DELAY_SECONDS + (index * STARTUP_RESUME_STAGGER_SECONDS) + jitter
+            scheduled = now + timedelta(seconds=delay)
+            current_next = parse_iso(state.get("next_sync_at"))
+            if not current_next or current_next <= now or current_next > scheduled:
+                state["next_sync_at"] = scheduled.isoformat(timespec="seconds")
+            state["sync_mode"] = "random"
+            state["startup_resume_requested_at"] = now.isoformat(timespec="seconds")
+            state["last_action"] = f"Sync de retomada agendada ao abrir o painel: {fmt_dt(state.get('next_sync_at'))}."
+
+        total = len(eligible) + initial_pending_count
+        if total:
+            self.state["last_startup_resume_at"] = now.isoformat(timespec="seconds")
+            self.last_action = (
+                f"Sync de retomada agendada para {total} perfil(is), "
+                f"com intervalo de {human_duration(STARTUP_RESUME_STAGGER_SECONDS)} para evitar sobrecarga."
+            )
+            self.save_all()
 
     def post_ui_action(self, action) -> None:
         action_log(f"queue-action {getattr(action, '__name__', repr(action))}")

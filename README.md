@@ -34,6 +34,7 @@ O fluxo de producao recomendado hoje e o **modo perfis**:
 - Identificacao do numero pelo QR quando a bridge retorna o JID do WhatsApp.
 - Primeira sincronizacao inteligente, com limite maximo e fechamento automatico quando a importacao estabiliza.
 - Sincronizacoes random depois da primeira sincronizacao.
+- Sync de retomada ao abrir o painel ou reiniciar o PC, com perfis escalonados para evitar sobrecarga.
 - Botao para abrir pasta do projeto e copiar caminho do `messages.db`.
 - Botao para remover perfil, escolhendo entre preservar dados ou apagar a pasta/base local.
 - MCP `whatsapp-profiles` para pesquisar mensagens e listar fotos, videos, audios, PDFs, documentos e links.
@@ -141,6 +142,8 @@ Por padrao, ela:
 - depois agenda sincronizacoes random.
 
 Depois da primeira sincronizacao, cada perfil abre a porta local somente durante janelas de sync manual ou random. Fora dessas janelas, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP.
+
+Quando o painel inicia com o Windows ou e aberto depois de ficar encerrado, ele agenda uma **sync de retomada** para perfis autenticados. Os perfis sao escalonados, por padrao um a cada 2 minutos, para atualizar a base sem abrir todas as bridges ao mesmo tempo.
 
 Downloads de midia fisica ainda exigem a bridge do perfil aberta, porque o arquivo precisa ser baixado pelo WhatsApp Web.
 

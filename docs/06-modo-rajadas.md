@@ -3,7 +3,8 @@
 O painel usa dois tipos de sincronizacao:
 
 - **primeira sync inteligente** para um perfil recem autenticado;
-- **rajadas random** depois que a base inicial estabiliza.
+- **rajadas random** depois que a base inicial estabiliza;
+- **sync de retomada** quando o painel abre depois de boot ou depois de ficar encerrado.
 
 Quando a porta esta fechada, Codex e Claude ainda conseguem pesquisar a base local via MCP. A porta so precisa abrir para atualizar mensagens novas, enviar mensagens em uma feature futura ou baixar midias pelo WhatsApp.
 
@@ -44,6 +45,25 @@ intervalo random: entre 10 e 50 minutos
 
 O botao **Sync agora** abre uma janela sob demanda para o perfil selecionado.
 
+## Sync De Retomada Ao Abrir
+
+Quando o Windows/macOS inicia o painel, ou quando o usuario abre o painel depois de fechar o sistema completo, o painel agenda uma sync curta para perfis que:
+
+- estao cadastrados;
+- nao estao pausados;
+- ja possuem sessao WhatsApp autenticada.
+
+Para evitar sobrecarga, ele nao abre todas as bridges ao mesmo tempo. Por padrao:
+
+```text
+primeiro perfil: cerca de 30s apos abrir
+perfis seguintes: espacados em 2 minutos
+jitter: ate 45s para nao ficar mecanico
+anti-duplicacao: nao reagenda se o painel reiniciar varias vezes em menos de 5 minutos
+```
+
+Perfis ainda em primeira sync inteligente continuam pela regra da primeira sync. Perfis sem QR/login continuam aguardando QR.
+
 ## Configuracao
 
 Arquivo:
@@ -67,7 +87,12 @@ Exemplo:
   "sync_idle_minutes": 3,
   "sync_max_minutes": 25,
   "random_sync_min_minutes": 10,
-  "random_sync_max_minutes": 50
+  "random_sync_max_minutes": 50,
+  "startup_resume_sync": true,
+  "startup_resume_initial_delay_seconds": 30,
+  "startup_resume_stagger_seconds": 120,
+  "startup_resume_jitter_seconds": 45,
+  "startup_resume_min_interval_minutes": 5
 }
 ```
 
