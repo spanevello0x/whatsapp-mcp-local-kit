@@ -539,13 +539,7 @@ def port_open(port: int) -> bool:
         return False
 
 
-def pid_alive(pid_path: Path) -> bool:
-    if not pid_path.exists():
-        return False
-    try:
-        pid = int(pid_path.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        return False
+def process_id_alive(pid: int) -> bool:
     if os.name == "nt":
         try:
             kernel32 = ctypes.windll.kernel32
@@ -563,6 +557,16 @@ def pid_alive(pid_path: Path) -> bool:
         return False
 
 
+def pid_alive(pid_path: Path) -> bool:
+    if not pid_path.exists():
+        return False
+    try:
+        pid = int(pid_path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    return process_id_alive(pid)
+
+
 def profile_running(profile: dict) -> bool:
     paths = profile_paths(profile)
     alive = pid_alive(paths["pid_path"])
@@ -571,29 +575,78 @@ def profile_running(profile: dict) -> bool:
     return alive or port_open(int(profile.get("port", 0) or 0))
 
 
-def stop_profile(profile: dict) -> None:
-    paths = profile_paths(profile)
-    pid_path = paths["pid_path"]
-    if not pid_path.exists():
-        return
+def process_ids_for_port(port: int) -> list[int]:
+    if port <= 0:
+        return []
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                ["netstat", "-ano", "-p", "tcp"],
+                capture_output=True,
+                text=True,
+                timeout=6,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except (OSError, subprocess.SubprocessError):
+            return []
+        pids: set[int] = set()
+        suffix = f":{int(port)}"
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if len(parts) < 5 or parts[0].upper() != "TCP":
+                continue
+            local_addr = parts[1]
+            state = parts[3].upper()
+            pid = parts[-1]
+            if state == "LISTENING" and local_addr.endswith(suffix) and pid.isdigit():
+                pids.add(int(pid))
+        return sorted(pids)
     try:
-        pid = int(pid_path.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        pid_path.unlink(missing_ok=True)
-        return
+        result = subprocess.run(
+            ["lsof", f"-tiTCP:{int(port)}", "-sTCP:LISTEN"],
+            capture_output=True,
+            text=True,
+            timeout=4,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return sorted({int(line.strip()) for line in result.stdout.splitlines() if line.strip().isdigit()})
+
+
+def terminate_process(pid: int) -> None:
     if os.name == "nt":
         subprocess.run(
-            ["taskkill", "/f", "/pid", str(pid)],
+            ["taskkill", "/f", "/t", "/pid", str(pid)],
             capture_output=True,
             text=True,
             timeout=8,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
-    else:
-        try:
-            os.kill(pid, 15)
-        except OSError:
-            pass
+        return
+    try:
+        os.kill(pid, 15)
+    except OSError:
+        pass
+
+
+def stop_profile(profile: dict, wait_seconds: float = 4.0) -> None:
+    paths = profile_paths(profile)
+    pid_path = paths["pid_path"]
+    port = int(profile.get("port", 0) or 0)
+    pids: set[int] = set(process_ids_for_port(port))
+    try:
+        if pid_path.exists():
+            pids.add(int(pid_path.read_text(encoding="utf-8").strip()))
+    except (OSError, ValueError):
+        pid_path.unlink(missing_ok=True)
+    for pid in sorted(pids):
+        terminate_process(pid)
+    deadline = time.time() + max(0.0, wait_seconds)
+    while time.time() < deadline:
+        alive = any(process_id_alive(pid) for pid in pids)
+        if not alive and not port_open(port):
+            break
+        time.sleep(0.2)
     pid_path.unlink(missing_ok=True)
 
 
@@ -1187,7 +1240,7 @@ class ProfilesApp:
         self.folder_button.grid(row=0, column=4, sticky="ew", padx=4, pady=4)
         self.copy_button = self._button(self.actions, "Copiar DB", GRAY, self.copy_selected_db, width=14)
         self.copy_button.grid(row=0, column=5, sticky="ew", padx=4, pady=4)
-        self.remove_button = self._button(self.actions, "Remover perfil", RED, self.remove_selected_profile, width=14)
+        self.remove_button = self._button(self.actions, "Excluir perfil", RED, self.remove_selected_profile, width=14)
         self.remove_button.grid(row=0, column=6, sticky="ew", padx=(4, 0), pady=4)
         for index in range(7):
             self.actions.columnconfigure(index, weight=1)
@@ -2081,10 +2134,10 @@ class ProfilesApp:
     def remove_selected_profile(self) -> None:
         profile = self.selected_profile()
         if not profile:
-            mb.showinfo("Remover perfil", "Selecione um perfil.")
+            mb.showinfo("Excluir perfil", "Selecione um perfil.")
             return
         if profile_is_starter(profile):
-            mb.showinfo("Remover perfil", "Cadastre ou edite o primeiro perfil antes de remover.")
+            mb.showinfo("Excluir perfil", "Cadastre ou edite o primeiro perfil antes de excluir.")
             return
         self.open_remove_profile_dialog(profile)
 
@@ -2097,7 +2150,7 @@ class ProfilesApp:
         win = tk.Toplevel(self.root)
         win.withdraw()
         apply_window_icon(win)
-        win.title(f"Remover perfil - {profile.get('name', profile.get('slug'))}")
+        win.title(f"Excluir perfil - {profile.get('name', profile.get('slug'))}")
         win.configure(bg=BG)
         win.transient(self.root)
         win.grab_set()
@@ -2105,7 +2158,7 @@ class ProfilesApp:
 
         frame = tk.Frame(win, bg=BG, padx=18, pady=16)
         frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text="Remover perfil", bg=BG, fg=TEXT, font=("Segoe UI", 15, "bold")).pack(anchor="w")
+        tk.Label(frame, text="Excluir perfil", bg=BG, fg=TEXT, font=("Segoe UI", 15, "bold")).pack(anchor="w")
         tk.Label(
             frame,
             text=f"{project_name(self.config, profile)} / {profile.get('name')}",
@@ -2118,8 +2171,8 @@ class ProfilesApp:
         tk.Label(
             frame,
             text=(
-                "Escolha o tipo de remocao. O painel sempre fecha a sincronizacao deste perfil antes de remover, "
-                "para ele nao ficar rodando sem controle."
+                "Esta acao sempre para a sincronizacao e tira o perfil da lista do painel/MCP. "
+                "Opcionalmente, voce tambem pode apagar os bancos, sessao, logs e arquivos locais."
             ),
             bg=BG,
             fg=MUTED,
@@ -2128,12 +2181,16 @@ class ProfilesApp:
             justify=tk.LEFT,
         ).pack(anchor="w", fill=tk.X, pady=(0, 12))
 
-        option_keep = tk.Frame(frame, bg=PANEL, padx=12, pady=10)
-        option_keep.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(option_keep, text="Remover so do painel", bg=PANEL, fg=TEXT, font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        summary = tk.Frame(frame, bg=PANEL, padx=12, pady=10)
+        summary.pack(fill=tk.X, pady=(0, 10))
+        tk.Label(summary, text="O que vai acontecer", bg=PANEL, fg=TEXT, font=("Segoe UI", 11, "bold")).pack(anchor="w")
         tk.Label(
-            option_keep,
-            text="Tira o numero da lista e do MCP, mas mantem whatsapp.db, messages.db, logs e midias na pasta local.",
+            summary,
+            text=(
+                "1. Fechar a bridge deste perfil.\n"
+                "2. Excluir o perfil do painel e do MCP.\n"
+                "3. Manter os dados locais, a menos que voce marque a opcao abaixo."
+            ),
             bg=PANEL,
             fg=MUTED,
             font=("Segoe UI", 9),
@@ -2141,38 +2198,42 @@ class ProfilesApp:
             justify=tk.LEFT,
         ).pack(anchor="w", pady=(3, 8))
 
-        option_delete = tk.Frame(frame, bg=PANEL_2, padx=12, pady=10)
-        option_delete.pack(fill=tk.X, pady=(0, 12))
-        tk.Label(option_delete, text="Apagar perfil e dados locais", bg=PANEL_2, fg=RED, font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        delete_data = tk.BooleanVar(value=False)
+        option_delete = tk.Checkbutton(
+            frame,
+            text="Apagar tambem os dados locais deste perfil",
+            variable=delete_data,
+            bg=BG,
+            fg=RED,
+            selectcolor=PANEL_2,
+            activebackground=BG,
+            activeforeground=RED,
+            font=("Segoe UI", 10, "bold"),
+            anchor="w",
+        )
+        option_delete.pack(fill=tk.X, pady=(0, 4))
         tk.Label(
-            option_delete,
-            text=f"Apaga a pasta do perfil, incluindo sessoes, mensagens, logs e arquivos baixados.\nPasta: {profile_dir}\nDB: {messages_db}",
-            bg=PANEL_2,
+            frame,
+            text=f"Se marcado, apaga sessao, mensagens, logs e arquivos baixados.\nPasta: {profile_dir}\nDB: {messages_db}",
+            bg=BG,
             fg=MUTED,
             font=("Segoe UI", 9),
             wraplength=530,
             justify=tk.LEFT,
-        ).pack(anchor="w", pady=(3, 8))
+        ).pack(anchor="w", pady=(0, 12))
 
         buttons = tk.Frame(frame, bg=BG)
         buttons.pack(fill=tk.X, pady=(4, 0))
         tk.Button(buttons, text="Cancelar", command=win.destroy).pack(side=tk.RIGHT, padx=(8, 0))
         tk.Button(
             buttons,
-            text="Apagar tudo",
+            text="Excluir perfil",
             bg=RED,
             fg=TEXT,
-            command=lambda: self.confirm_remove_profile(profile, win, delete_data=True),
-        ).pack(side=tk.RIGHT, padx=8)
-        tk.Button(
-            buttons,
-            text="Remover so do painel",
-            bg=GRAY,
-            fg=TEXT,
-            command=lambda: self.confirm_remove_profile(profile, win, delete_data=False),
+            command=lambda: self.confirm_remove_profile(profile, win, delete_data=bool(delete_data.get())),
         ).pack(side=tk.RIGHT, padx=8)
 
-        center_child_window(win, self.root, 640, 430)
+        center_child_window(win, self.root, 660, 420)
         win.deiconify()
         win.lift(self.root)
         win.focus_force()
@@ -2184,17 +2245,17 @@ class ProfilesApp:
         if delete_data:
             if not path_is_inside(profile_dir, PROFILES_DIR) or profile_dir.resolve(strict=False) == PROFILES_DIR.resolve(strict=False):
                 mb.showerror(
-                    "Remover perfil",
+                    "Excluir perfil",
                     f"Por seguranca, o painel so apaga pastas dentro da pasta geral do sistema.\n\nPasta do perfil:\n{profile_dir}",
                     parent=win,
                 )
                 return
             ok = mb.askyesno(
-                "Apagar dados locais",
+                "Excluir perfil e apagar dados",
                 (
-                    f"Apagar definitivamente o perfil {name} e todos os dados locais?\n\n"
+                    f"Excluir {name} do painel/MCP e apagar definitivamente todos os dados locais?\n\n"
                     f"Isto remove:\n{profile_dir}\n\n"
-                    "Nao tem desfazer. Se quiser preservar historico, escolha Remover so do painel."
+                    "Nao tem desfazer. Para preservar o historico, volte e desmarque a opcao de apagar dados locais."
                 ),
                 parent=win,
             )
@@ -2202,10 +2263,10 @@ class ProfilesApp:
                 return
         else:
             ok = mb.askyesno(
-                "Remover so do painel",
+                "Excluir perfil",
                 (
-                    f"Remover {name} da lista do painel e do MCP?\n\n"
-                    "Os arquivos locais continuam preservados na pasta do perfil."
+                    f"Excluir {name} da lista do painel e do MCP?\n\n"
+                    "A sincronizacao sera parada. Os arquivos locais continuam preservados na pasta do perfil."
                 ),
                 parent=win,
             )
@@ -2215,7 +2276,7 @@ class ProfilesApp:
         try:
             self.remove_profile(profile, delete_data=delete_data)
         except OSError as exc:
-            mb.showerror("Remover perfil", f"Nao consegui remover o perfil.\n\n{exc}", parent=win)
+            mb.showerror("Excluir perfil", f"Nao consegui excluir o perfil.\n\n{exc}", parent=win)
             return
         win.destroy()
         self.refresh()
@@ -2228,7 +2289,7 @@ class ProfilesApp:
         paths = profile_paths(profile)
         profile_dir = paths["profile_dir"]
 
-        stop_profile(profile)
+        stop_profile(profile, wait_seconds=8.0 if delete_data else 4.0)
         qr_window = self.qr_windows.pop(slug, None)
         if qr_window and qr_window.winfo_exists():
             try:
@@ -2238,14 +2299,18 @@ class ProfilesApp:
 
         if delete_data and profile_dir.exists():
             last_error: OSError | None = None
-            for _attempt in range(5):
+            deadline = time.time() + 18
+            attempt = 0
+            while time.time() < deadline:
                 try:
                     shutil.rmtree(profile_dir)
                     last_error = None
                     break
                 except OSError as exc:
                     last_error = exc
-                    time.sleep(0.4)
+                    stop_profile(profile, wait_seconds=2.0)
+                    time.sleep(min(1.5, 0.35 + (attempt * 0.2)))
+                    attempt += 1
             if last_error:
                 raise last_error
 
@@ -2254,9 +2319,9 @@ class ProfilesApp:
         remaining = self.display_profiles()
         self.selected_slug = remaining[0]["slug"] if remaining else None
         self.last_action = (
-            f"Perfil removido e dados apagados: {name}."
+            f"Perfil excluido e dados apagados: {name}."
             if delete_data
-            else f"Perfil removido do painel, dados preservados: {name}."
+            else f"Perfil excluido do painel, dados preservados: {name}."
         )
         self.save_all()
 
