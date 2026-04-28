@@ -2,7 +2,7 @@
 
 Este kit instala um conjunto local de componentes para WhatsApp + MCP.
 
-O fluxo principal e o modo perfis. Windows e o caminho mais validado; macOS tem suporte beta documentado em `docs/10-macos.md`.
+O fluxo principal e o modo perfis. O repositorio e unico para Windows e macOS; os scripts detectados pelo agente/usuario sao separados para respeitar os atalhos, auto-start, permissao e antivirus/EDR de cada sistema.
 
 ## Componentes Do Repositorio
 
@@ -111,6 +111,17 @@ sync_max_minutes: 25
 random_sync_min_minutes: 10
 random_sync_max_minutes: 50
 ```
+
+Sync de retomada:
+
+```text
+startup_resume_sync: true
+startup_resume_clear_paused: true
+startup_resume_initial_delay_seconds: 30
+startup_resume_stagger_seconds: 120
+```
+
+Ao abrir o painel depois de reiniciar ou depois de ficar encerrado, perfis autenticados voltam a sincronizar por padrao, mesmo que tenham sido pausados em uma sessao anterior.
 
 ## Verificacao
 

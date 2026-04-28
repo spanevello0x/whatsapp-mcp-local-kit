@@ -1,8 +1,8 @@
 # 10 - MacBook / macOS
 
-O macOS agora tem um caminho proprio para o **modo perfis**: varios numeros, projetos, base SQLite separada, painel Tkinter, icone na Mesa/Desktop, menu bar via `pystray`, LaunchAgent para iniciar com o login e MCP `whatsapp-profiles`.
+O macOS tem um caminho proprio para o **modo perfis**: varios numeros, projetos, base SQLite separada, painel Tkinter, icone na Mesa/Desktop, menu bar via `pystray`, LaunchAgent para iniciar com o login e MCP `whatsapp-profiles`.
 
-Ainda assim, o macOS deve ser tratado como **suporte beta** ate ser validado em um Mac real. A bridge core e multiplataforma, mas detalhes de permissao, Homebrew, Python/Tk e EDR corporativo variam bastante por maquina.
+A bridge core e multiplataforma, mas detalhes de permissao, Homebrew, Python/Tk e EDR corporativo variam bastante por maquina. Por isso, o instalador diagnostica o ambiente antes de alterar arquivos e a documentacao separa claramente o fluxo macOS do fluxo Windows.
 
 ## Instalacao recomendada
 

@@ -124,7 +124,7 @@ Esses parametros existem para evitar fechar cedo durante uma importacao pesada. 
 - **Primeira sync inteligente**: autenticado e importando base inicial.
 - **Sincronizando random**: porta aberta em uma janela curta de sync.
 - **Aguardando random**: porta fechada, base pesquisavel, proxima sync agendada.
-- **Pausado**: perfil parado ate o usuario retomar.
+- **Pausado**: perfil parado na sessao atual. Ao reiniciar/abrir o painel depois de ficar encerrado, o padrao e voltar a sincronizar perfis autenticados.
 
 ## Remover Perfil
 
@@ -136,6 +136,8 @@ O painel pergunta:
 - **Apagar perfil e dados locais**: fecha a bridge e apaga a pasta do perfil.
 
 Por seguranca, a exclusao automatica so apaga pastas dentro da pasta geral do sistema.
+
+Se marcar para apagar os dados locais, o painel pede confirmacao extra com o nome exato do perfil, mostra progresso e tenta fechar a bridge antes de remover arquivos. Se o Windows/macOS ainda mantiver algum SQLite travado, o perfil sai da lista e a pasta fica em limpeza pendente para a proxima abertura do painel.
 
 ## MCP De Perfis
 

@@ -5,7 +5,7 @@ Kit em portugues para instalar um painel local do WhatsApp MCP com:
 - varios numeros/perfis na mesma maquina;
 - organizacao por projetos;
 - base SQLite local separada por perfil;
-- icone no Desktop e bandeja do Windows;
+- icone no Desktop/Mesa e bandeja/menu bar;
 - primeira sincronizacao inteligente;
 - sincronizacoes random depois da base estabilizar;
 - MCP para Codex e Claude pesquisarem mensagens, arquivos e links.
@@ -26,7 +26,7 @@ O fluxo de producao recomendado hoje e o **modo perfis**:
 ## O Que Este Kit Entrega
 
 - Bootstrap Windows para preparar dependencias, compilar a bridge e instalar o painel.
-- Bootstrap macOS em modo perfis beta para MacBook.
+- Bootstrap macOS em modo perfis para MacBook.
 - Painel local em Python/Tkinter com icone no Desktop/Mesa e bandeja/menu bar.
 - Auto-start padrao para abrir minimizado com o Windows ou macOS.
 - Cadastro de perfis por projeto.
@@ -93,7 +93,7 @@ Depois abra o icone **WhatsApp MCP Tray** na area de trabalho.
 
 ## Instalacao Rapida No MacBook / macOS
 
-No macOS o modo perfis tambem e o fluxo recomendado, mas ainda deve ser tratado como **beta ate validacao em um Mac real**:
+No macOS o modo perfis tambem e o fluxo recomendado. O caminho principal foi preparado para MacBook, mas permissao, Homebrew, Python/Tk e EDR corporativo podem variar por maquina:
 
 ```bash
 git clone https://github.com/spanevello0x/whatsapp-mcp-local-kit.git
@@ -154,9 +154,9 @@ Por padrao, ela:
 
 Depois da primeira sincronizacao, cada perfil abre a porta local somente durante janelas de sync manual ou random. Fora dessas janelas, Codex/Claude ainda conseguem pesquisar o `messages.db` local via MCP.
 
-Quando o painel inicia com o Windows ou e aberto depois de ficar encerrado, ele agenda uma **sync de retomada** para perfis autenticados. Os perfis sao escalonados, por padrao um a cada 2 minutos, para atualizar a base sem abrir todas as bridges ao mesmo tempo.
+Quando o painel inicia com o Windows/macOS ou e aberto depois de ficar encerrado, ele agenda uma **sync de retomada** para perfis autenticados. Os perfis sao escalonados, por padrao um a cada 2 minutos, para atualizar a base sem abrir todas as bridges ao mesmo tempo.
 
-Pausa manual e respeitada depois de reiniciar. Fechar o sistema ou reiniciar o computador apenas para os processos; no proximo login, perfis autenticados que ainda precisam sincronizar retomam normalmente.
+Pausa manual vale para a sessao atual. Ao reiniciar o computador ou abrir o sistema em outro dia/momento, o comportamento padrao e limpar a pausa anterior e voltar a sincronizar perfis autenticados, sem exigir clique do usuario. Quem quiser manter tudo parado deve desativar o auto-start ou encerrar/pausar novamente pelo painel.
 
 Downloads de midia fisica ainda exigem a bridge do perfil aberta, porque o arquivo precisa ser baixado pelo WhatsApp Web.
 
@@ -219,6 +219,7 @@ No perfil vendedor-joao, liste PDFs, imagens, audios e links do telefone +55 (11
 
 - [COMECE_AQUI.md](COMECE_AQUI.md): roteiro didatico para usuario e IA instalarem.
 - [PROMPT-CODEX.md](PROMPT-CODEX.md): prompt pronto para colar no Codex/Claude.
+- [AGENTS.md](AGENTS.md): regras para agentes instalarem sem misturar Windows/macOS nem apagar dados.
 - [docs/00-o-que-e-automatico.md](docs/00-o-que-e-automatico.md): o que o instalador faz e o que depende do usuario.
 - [docs/02-antivirus.md](docs/02-antivirus.md): excecoes recomendadas e quarentena.
 - [docs/03-mcp-codex-claude.md](docs/03-mcp-codex-claude.md): configuracao MCP.

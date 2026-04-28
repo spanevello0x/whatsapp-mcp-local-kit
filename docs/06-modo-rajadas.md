@@ -50,7 +50,6 @@ O botao **Sync agora** abre uma janela sob demanda para o perfil selecionado.
 Quando o Windows/macOS inicia o painel, ou quando o usuario abre o painel depois de fechar o sistema completo, o painel agenda uma sync curta para perfis que:
 
 - estao cadastrados;
-- nao estao pausados;
 - ja possuem sessao WhatsApp autenticada.
 
 Para evitar sobrecarga, ele nao abre todas as bridges ao mesmo tempo. Por padrao:
@@ -64,7 +63,7 @@ anti-duplicacao: nao reagenda se o painel reiniciar varias vezes em menos de 5 m
 
 Perfis ainda em primeira sync inteligente continuam pela regra da primeira sync. Perfis sem QR/login continuam aguardando QR.
 
-Se o usuario pausou manualmente um perfil, o painel respeita a pausa no proximo boot. Se o sistema apenas foi fechado ou o computador reiniciou, a pausa temporaria de fechamento nao bloqueia a retomada.
+Pausa manual para a sync daquele momento continua funcionando enquanto o painel esta aberto. No proximo boot, login ou abertura depois de ficar encerrado, o padrao de producao e limpar a pausa anterior e retomar os perfis autenticados. Isso evita que uma pausa feita em outro dia deixe o sistema parado sem o usuario perceber.
 
 ## Configuracao
 
@@ -91,6 +90,7 @@ Exemplo:
   "random_sync_min_minutes": 10,
   "random_sync_max_minutes": 50,
   "startup_resume_sync": true,
+  "startup_resume_clear_paused": true,
   "startup_resume_initial_delay_seconds": 30,
   "startup_resume_stagger_seconds": 120,
   "startup_resume_jitter_seconds": 45,

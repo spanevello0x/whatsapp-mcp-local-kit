@@ -59,6 +59,7 @@ $configMap = [ordered]@{
   startup_resume_stagger_seconds = 120
   startup_resume_jitter_seconds = 45
   startup_resume_min_interval_minutes = 5
+  startup_resume_clear_paused = $true
 }
 if ($ProfilesMode) {
   $profilesConfigPath = Join-Path $ProfilesDir "profiles.json"

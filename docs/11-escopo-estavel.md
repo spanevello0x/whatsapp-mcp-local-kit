@@ -27,7 +27,7 @@ O fluxo estavel atual e o **modo perfis**: varios numeros de WhatsApp na mesma m
 - Remover perfil apagando dados locais, com confirmacao.
 - Configurar MCP no Codex e/ou Claude Desktop.
 - Verificar a instalacao com `scripts/verify-profiles.ps1`.
-- Suporte macOS em beta com `scripts/bootstrap-macos.sh` e `scripts/verify-profiles-macos.sh`.
+- Suporte macOS com `scripts/bootstrap-macos.sh`, `.app`, LaunchAgent e `scripts/verify-profiles-macos.sh`.
 
 ## Fora Do Escopo Por Enquanto
 

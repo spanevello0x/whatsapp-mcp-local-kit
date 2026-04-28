@@ -121,4 +121,4 @@ No macOS o arquivo do Claude Desktop fica em:
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-O modo perfis para macOS esta em beta ate validacao em Mac real. Veja `docs/10-macos.md`.
+O modo perfis para macOS usa o mesmo MCP `whatsapp-profiles`, com scripts proprios para LaunchAgent, `.app` e caminhos do macOS. Veja `docs/10-macos.md`.

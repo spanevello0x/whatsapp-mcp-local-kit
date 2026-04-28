@@ -107,6 +107,7 @@ chmod +x scripts/*.sh
 - Cada usuario precisa escanear o QR no proprio WhatsApp.
 - A primeira sincronizacao pode ficar ativa por bastante tempo, mas fecha quando estabilizar.
 - Depois disso, as sincronizacoes acontecem em janelas random.
+- Ao reiniciar ou abrir o painel depois de ficar encerrado, perfis autenticados voltam a sincronizar por padrao, mesmo que uma pausa antiga tenha ficado gravada.
 - A IA consegue pesquisar a base local pelo MCP mesmo com a porta fechada.
 - Baixar midias fisicas exige a bridge do perfil aberta.
 - Remover perfil pode preservar dados ou apagar a pasta inteira, conforme escolha do usuario.

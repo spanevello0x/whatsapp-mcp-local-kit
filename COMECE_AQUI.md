@@ -47,7 +47,7 @@ Quero instalar o WhatsApp MCP Local Kit neste computador usando este repositorio
 
 Objetivo:
 - Instalar o modo perfis como fluxo principal.
-- Criar o painel local com icone no Desktop e bandeja.
+- Criar o painel local com icone no Desktop/Mesa e bandeja/menu bar.
 - Permitir cadastrar varios numeros de WhatsApp separados por projeto.
 - Cada perfil precisa ter sessao, porta, logs e messages.db proprios.
 - Configurar o MCP whatsapp-profiles para Codex e/ou Claude Desktop.
@@ -55,7 +55,7 @@ Objetivo:
 
 Regras obrigatorias:
 - Comece lendo README.md, COMECE_AQUI.md e docs/02-antivirus.md.
-- Diagnostique antes de alterar: sistema operacional, git, python, uv, go, gcc/msys2 e pastas existentes.
+- Diagnostique antes de alterar: sistema operacional, git, python, uv, go e pastas existentes. No Windows, confira GCC/MSYS2; no macOS, confira Xcode Command Line Tools/clang e Tkinter.
 - Antes de instalar dependencias, criar atalhos, configurar MCP ou rodar build, explique o que sera feito e por que.
 - Se existir whatsapp.db ou messages.db, faca backup antes de qualquer reinstalacao.
 - Nao apague bancos .db sem minha confirmacao explicita.
@@ -97,6 +97,7 @@ Depois da instalacao:
 - Depois de autenticar, clique em Voltar ao painel.
 - Confirme que o painel mostra status, mensagens, porta e proxima acao.
 - Confirme que o auto-start esta ativo ou mostre como ativar no painel.
+- Explique que, ao reiniciar ou abrir depois de ficar encerrado, perfis autenticados voltam a sincronizar por padrao mesmo se uma pausa antiga ficou gravada.
 
 No resumo final, informe:
 - caminho do repositorio;
