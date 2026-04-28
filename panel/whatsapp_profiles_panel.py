@@ -491,9 +491,11 @@ def ensure_profile_dirs(profile: dict) -> None:
 
 
 def port_open(port: int) -> bool:
+    if port <= 0:
+        return False
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(0.15)
+            sock.settimeout(0.03)
             return sock.connect_ex(("127.0.0.1", int(port))) == 0
     except OSError:
         return False
@@ -611,6 +613,38 @@ def db_stats(profile: dict) -> dict:
 
 def empty_db_stats() -> dict:
     return {"exists": False, "messages": 0, "chats": 0, "last": None, "mtime": None}
+
+
+def cached_db_stats(profile: dict, state: dict | None = None) -> dict:
+    if not profile_configured(profile):
+        return empty_db_stats()
+    state = state or {}
+    messages = state.get("current_messages", state.get("last_observed_messages"))
+    chats = state.get("current_chats")
+    last = state.get("current_last_message")
+    signature = str(state.get("last_signature") or "")
+    if signature:
+        parts = signature.split("|", 2)
+        if messages is None and parts:
+            try:
+                messages = int(parts[0])
+            except (TypeError, ValueError):
+                messages = 0
+        if not last and len(parts) > 1 and parts[1] not in {"", "None"}:
+            last = parts[1]
+    db_exists = False
+    try:
+        db_exists = profile_paths(profile)["messages_db"].exists()
+    except OSError:
+        db_exists = False
+    return {
+        "exists": bool(db_exists or messages or last),
+        "messages": int(messages or 0),
+        "chats": None if chats is None else int(chats or 0),
+        "last": last,
+        "mtime": state.get("current_db_mtime"),
+        "cached": True,
+    }
 
 
 def read_profile_log(profile: dict, lines: int = 80) -> list[str]:
@@ -1836,7 +1870,7 @@ class ProfilesApp:
                     state["initial_sync_started_at"] = started.isoformat(timespec="seconds")
                     state["initial_sync_until"] = (started + timedelta(hours=INITIAL_SYNC_HOURS)).isoformat(timespec="seconds")
                     state["sync_mode"] = "initial_smart"
-                    state["baseline_messages"] = self.safe_db_stats(profile).get("messages", 0)
+                    state["baseline_messages"] = cached_db_stats(profile, state).get("messages", 0)
                 state["paused"] = False
                 self.save_all()
                 self.last_action = f"{profile.get('name')} autenticado; sync inteligente iniciando."
@@ -2213,7 +2247,7 @@ class ProfilesApp:
             state["current_sync_started_at"] = now_iso()
             state["last_activity_at"] = now_iso()
             state["current_sync_max_until"] = (datetime.now() + timedelta(seconds=SYNC_MAX_SECONDS)).isoformat(timespec="seconds")
-            stats = self.safe_db_stats(profile)
+            stats = cached_db_stats(profile, state)
             state["baseline_messages"] = stats.get("messages", 0)
             state["last_signature"] = self.signature(stats)
         ok, message = start_profile(profile, visible=False)
@@ -2276,24 +2310,40 @@ class ProfilesApp:
         detected = jid_to_phone(str(row[0]))
         if not detected:
             return False
+        changed = False
         if not profile.get("number"):
             profile["number"] = detected
             profile["number_digits"] = phone_digits(detected)
+            changed = True
         if row[1] and not profile.get("whatsapp_push_name"):
             profile["whatsapp_push_name"] = row[1]
+            changed = True
         if row[2] and not profile.get("whatsapp_business_name"):
             profile["whatsapp_business_name"] = row[2]
-        profile["updated_at"] = now_iso()
-        save_profiles_config(self.config)
+            changed = True
+        if changed:
+            profile["updated_at"] = now_iso()
+            save_profiles_config(self.config)
         return True
 
     def session_ready(self, profile: dict, state: dict) -> bool:
         if not profile_configured(profile):
             return False
         if state.get("authenticated_at"):
-            return self.sync_profile_identity_from_session(profile)
+            session_db = profile_paths(profile)["session_db"]
+            if not session_db.exists():
+                return False
+            missing_identity = not profile.get("number") or not profile.get("whatsapp_push_name")
+            last_identity_sync = parse_iso(state.get("last_identity_sync_at"))
+            should_sync_identity = missing_identity and (
+                not last_identity_sync or (datetime.now() - last_identity_sync).total_seconds() > 600
+            )
+            if should_sync_identity and self.sync_profile_identity_from_session(profile):
+                state["last_identity_sync_at"] = now_iso()
+            return True
         if self.sync_profile_identity_from_session(profile):
             state["authenticated_at"] = now_iso()
+            state["last_identity_sync_at"] = now_iso()
             return True
         return False
 
@@ -2324,6 +2374,12 @@ class ProfilesApp:
             state["last_activity_at"] = now_iso()
         if stats.get("messages") is not None:
             state["current_messages"] = messages
+        if stats.get("chats") is not None:
+            state["current_chats"] = int(stats.get("chats") or 0)
+        if stats.get("last"):
+            state["current_last_message"] = stats.get("last")
+        if stats.get("mtime"):
+            state["current_db_mtime"] = stats.get("mtime")
 
     def schedule_next(self, state: dict) -> None:
         delay = random.randint(RANDOM_SYNC_MIN_SECONDS, RANDOM_SYNC_MAX_SECONDS)
@@ -2332,29 +2388,36 @@ class ProfilesApp:
     def tick_profile(self, profile: dict) -> None:
         if not profile_configured(profile):
             return
-        paths = profile_paths(profile)
         ensure_profile_dirs(profile)
         state = self.state_for(profile["slug"])
         if state.get("paused"):
             return
         session_exists = self.session_ready(profile, state)
         running = profile_running(profile)
-        stats = self.safe_db_stats(profile)
-        self.observe_activity(profile, state, stats)
 
         if not session_exists:
             return
 
         now = datetime.now()
+        initial_until = parse_iso(state.get("initial_sync_until"))
+        initial_done = bool(state.get("initial_sync_completed_at"))
+        next_sync = parse_iso(state.get("next_sync_at"))
+        initial_pending = bool(initial_until and not initial_done)
+        sync_due = bool(next_sync and now >= next_sync)
+        needs_fresh_stats = running or initial_pending or not state.get("initial_sync_started_at") or sync_due
+        stats = self.safe_db_stats(profile) if needs_fresh_stats else cached_db_stats(profile, state)
+        if needs_fresh_stats:
+            self.observe_activity(profile, state, stats)
+
         if not state.get("initial_sync_started_at"):
             state["initial_sync_started_at"] = now.isoformat(timespec="seconds")
             state["initial_sync_until"] = (now + timedelta(hours=INITIAL_SYNC_HOURS)).isoformat(timespec="seconds")
             state["sync_mode"] = "initial_smart"
             state["baseline_messages"] = stats.get("messages", 0)
             state["last_action"] = "Primeira sync inteligente iniciada automaticamente."
+            initial_until = parse_iso(state.get("initial_sync_until"))
+            initial_done = False
 
-        initial_until = parse_iso(state.get("initial_sync_until"))
-        initial_done = bool(state.get("initial_sync_completed_at"))
         if initial_until and not initial_done:
             if now < initial_until:
                 if not running:
@@ -2428,7 +2491,6 @@ class ProfilesApp:
             return
 
         state["current_sync_started_at"] = None
-        next_sync = parse_iso(state.get("next_sync_at"))
         if not next_sync:
             self.schedule_next(state)
         elif now >= next_sync:
@@ -2533,9 +2595,9 @@ class ProfilesApp:
             configured = profile_configured(profile)
             if configured:
                 ensure_profile_dirs(profile)
-            stats = self.safe_db_stats(profile) if configured else empty_db_stats()
-            status, key, detail = self.profile_status(profile)
             state = self.state_for(profile["slug"])
+            stats = cached_db_stats(profile, state) if configured else empty_db_stats()
+            status, key, detail = self.profile_status(profile)
             summary["messages"] += int(stats.get("messages") or 0)
             if key == "running":
                 summary["running"] += 1
@@ -2596,8 +2658,8 @@ class ProfilesApp:
         configured = profile_configured(profile)
         if configured:
             ensure_profile_dirs(profile)
-        stats = self.safe_db_stats(profile) if configured else empty_db_stats()
         state = self.state_for(profile["slug"])
+        stats = cached_db_stats(profile, state) if configured else empty_db_stats()
         status, key, detail = self.profile_status(profile)
         session = self.session_ready(profile, state) if configured else False
         running = profile_running(profile) if configured else False
@@ -2619,7 +2681,11 @@ class ProfilesApp:
         if configured:
             db_line = "messages.db ainda nao criado"
         if stats.get("exists"):
-            db_line = f"{stats.get('messages', 0):,} mensagens em {stats.get('chats', 0):,} chats".replace(",", ".")
+            chat_count = stats.get("chats")
+            if chat_count is None:
+                db_line = f"{stats.get('messages', 0):,} mensagens".replace(",", ".")
+            else:
+                db_line = f"{stats.get('messages', 0):,} mensagens em {chat_count:,} chats".replace(",", ".")
         initial_until = state.get("initial_sync_until")
         initial_line = "pendente de QR" if not session else "concluida"
         if initial_until and not state.get("initial_sync_completed_at"):
