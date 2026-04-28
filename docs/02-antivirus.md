@@ -28,24 +28,56 @@ Tambem nao desative o antivirus inteiro. A liberacao deve ser pontual.
 Adapte `SEU_USUARIO` e o caminho real onde voce clonou o repositorio.
 
 ```text
-C:\Users\SEU_USUARIO\Documents\whatsapp-mcp-local-kit
+C:\CAMINHO\ONDE\CLONOU\whatsapp-mcp-local-kit
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 ```
 
-Se o repositorio foi clonado em outra pasta, libere essa pasta real do clone. Exemplo:
+Essas tres excecoes sao as principais:
+
+- **Repositorio clonado**: contem scripts, codigo do painel, MCP e codigo da bridge usada no build.
+- **WhatsApp MCP Panel**: contem o painel instalado, icones, launcher, ambiente Python local e logs do painel.
+- **WhatsApp MCP Profiles**: contem `whatsapp-bridge.exe`, projetos, perfis, sessoes `whatsapp.db` e bases `messages.db`.
+
+Se o repositorio foi clonado em outra pasta, libere a pasta real do clone. Exemplos:
 
 ```text
 C:\Users\SEU_USUARIO\Downloads\whatsapp-mcp-local-kit
+C:\Users\SEU_USUARIO\Documents\New project 2\whatsapp-mcp-local-kit
 ```
 
-Se o antivirus bloquear o auto-start, libere tambem a pasta Startup do proprio usuario:
+Se o antivirus bloquear o auto-start, prefira liberar apenas o atalho correto:
 
 ```text
-C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
 ```
 
-Essa excecao serve apenas para permitir o atalho `WhatsApp MCP Tray.lnk` criado pelo instalador.
+Evite liberar a pasta Startup inteira se o antivirus permitir excecao por arquivo.
+
+Se mesmo assim o instalador receber **Acesso negado** ao criar o auto-start, crie o atalho manualmente pelo Explorer:
+
+1. Abra `shell:startup` no Executar do Windows.
+2. Copie `WhatsApp MCP Tray.lnk` da Area de Trabalho para essa pasta.
+3. Remova de `shell:startup` atalhos antigos como `WhatsApp MCP Painel.lnk` ou `WhatsApp MCP Bridge.vbs`.
+
+## Excecoes Antigas Que Nao Devem Ser Necessarias
+
+Se voce veio de uma instalacao antiga, pode encontrar excecoes para:
+
+```text
+C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp
+C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp
+C:\Users\SEU_USUARIO\CLAUDE COWORK\Whatsapp\whatsapp-mcp\build-tmp\whatsapp-bridge.exe
+```
+
+Essas pastas pertencem ao fluxo legado. Para o modo perfis atual, o normal e usar:
+
+```text
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
+```
+
+Remova excecoes antigas somente depois de confirmar que o Startup do Windows nao contem mais `WhatsApp MCP Bridge.vbs` nem `WhatsApp MCP Painel.lnk`.
 
 ## Arquivos Que Podem Gerar Alerta
 
@@ -67,6 +99,21 @@ C:\Users\SEU_USUARIO\AppData\Roaming\uv\uv.exe
 ```
 
 Mesmo assim, prefira liberar a **pasta do projeto/painel/base**, nao o interpretador inteiro.
+
+## Precisa Mexer No Antivirus Todo Dia?
+
+Normalmente nao. As excecoes sao feitas **uma vez na instalacao**.
+
+Voce pode precisar revisar excecoes se:
+
+- mudar a pasta geral das bases no painel;
+- clonar o repositorio em outro lugar;
+- reinstalar o painel em outra pasta;
+- recompilar a bridge e o antivirus tratar o binario novo como suspeito;
+- o antivirus colocar `whatsapp-bridge.exe` ou arquivos do painel em quarentena;
+- o auto-start for bloqueado depois de uma atualizacao do Windows ou do antivirus.
+
+No uso diario, depois de configurado, nao deveria ser necessario mexer no antivirus.
 
 ## Por Que PowerShell Pode Ser Bloqueado
 

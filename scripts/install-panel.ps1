@@ -180,15 +180,22 @@ if (Test-Path $legacyDesktopShortcutPath) {
 New-Item -ItemType Directory -Path $startup -Force | Out-Null
 $startupShortcutPath = Join-Path $startup "WhatsApp MCP Tray.lnk"
 $legacyStartupShortcutPath = Join-Path $startup "WhatsApp MCP Painel.lnk"
-if (Test-Path $legacyStartupShortcutPath) {
+$legacyStartupVbsPath = Join-Path $startup "WhatsApp MCP Bridge.vbs"
+foreach ($legacyStartupPath in @($legacyStartupShortcutPath, $legacyStartupVbsPath)) {
+  if (-not (Test-Path $legacyStartupPath)) {
+    continue
+  }
   try {
-    Remove-Item -LiteralPath $legacyStartupShortcutPath -Force
+    Remove-Item -LiteralPath $legacyStartupPath -Force
   } catch {
-    Write-Warning "Auto-start antigo nao removido. Vou reapontar para o launcher novo: $($_.Exception.Message)"
-    try {
-      New-PanelShortcut -Path $legacyStartupShortcutPath -Arguments ('"' + $launcherPath + '" --minimized') -Description "WhatsApp MCP local panel minimized"
-    } catch {
-      Write-Warning "Auto-start antigo continua bloqueado. O botao Auto-start da UI pode tentar corrigir depois: $($_.Exception.Message)"
+    Write-Warning "Auto-start antigo nao removido ($legacyStartupPath): $($_.Exception.Message)"
+    if ($legacyStartupPath -eq $legacyStartupShortcutPath) {
+      Write-Warning "Vou tentar reapontar o atalho antigo para o launcher novo."
+      try {
+        New-PanelShortcut -Path $legacyStartupShortcutPath -Arguments ('"' + $launcherPath + '" --minimized') -Description "WhatsApp MCP local panel minimized"
+      } catch {
+        Write-Warning "Auto-start antigo continua bloqueado. O botao Auto-start da UI pode tentar corrigir depois: $($_.Exception.Message)"
+      }
     }
   }
 }
@@ -201,7 +208,8 @@ try {
   $autoStartCreated = Test-Path $startupShortcutPath
 } catch {
   Write-Warning "Auto-start nao criado. O Windows/antivirus bloqueou escrita em Startup: $($_.Exception.Message)"
-  Write-Warning "Crie manualmente um atalho para $launcherPath com argumento --minimized em: $startup"
+  Write-Warning "Crie manualmente o auto-start pelo Explorer: abra shell:startup e copie o atalho 'WhatsApp MCP Tray.lnk' da Area de Trabalho para essa pasta."
+  Write-Warning "Se o antivirus pedir excecao, libere apenas o arquivo '$startupShortcutPath', nao powershell.exe."
 }
 
 Write-Host "Painel instalado em: $PanelDir"

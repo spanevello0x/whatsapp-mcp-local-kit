@@ -13,12 +13,20 @@ Este arquivo existe para o usuario copiar o repositorio em uma IA, como Codex ou
 Excecoes principais no Windows:
 
 ```text
-C:\Users\SEU_USUARIO\Documents\whatsapp-mcp-local-kit
+C:\CAMINHO\ONDE\CLONOU\whatsapp-mcp-local-kit
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
 ```
 
 Se o repositorio for clonado em outro local, libere a pasta real do clone.
+
+Essas excecoes normalmente sao feitas uma vez so. O usuario so precisa revisar se mudar a pasta das bases, clonar o repo em outro local, reinstalar o painel, recompilar a bridge ou se o antivirus colocar algum arquivo em quarentena.
+
+Se o auto-start for bloqueado, libere apenas este atalho quando possivel:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
+```
 
 No macOS, nao desative Gatekeeper/XProtect/EDR. Se precisar liberar, use excecoes pontuais:
 
@@ -50,6 +58,8 @@ Regras obrigatorias:
 - Se existir whatsapp.db ou messages.db, faca backup antes de qualquer reinstalacao.
 - Nao apague bancos .db sem minha confirmacao explicita.
 - Nao crie excecao global para powershell.exe, cmd.exe, wscript.exe, python.exe ou go.exe.
+- Explique que as excecoes principais sao por pasta do usuario: clone do repo, WhatsApp MCP Panel e WhatsApp MCP Profiles.
+- Explique que antivirus normalmente e configurado uma vez, e so precisa revisao se mudar caminho, reinstalar, recompilar ou houver quarentena.
 - Para antivirus, informe exatamente quais pastas/arquivos liberar e espere eu confirmar.
 - Se o antivirus colocar algo em quarentena, oriente restaurar somente se o caminho estiver dentro das pastas esperadas.
 - Operacoes de envio de mensagem precisam de confirmacao explicita.

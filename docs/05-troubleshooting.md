@@ -67,11 +67,18 @@ No macOS:
 
 Se o verificador mostrar Startup ausente ou antigo:
 
-1. Libere no antivirus:
+1. Libere no antivirus as pastas principais:
 
 ```text
 C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel
-C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles
+<pasta real do repositorio clonado>
+```
+
+Se o bloqueio for especificamente no auto-start, libere apenas o atalho correto:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk
 ```
 
 2. Reinstale o painel:
@@ -87,6 +94,29 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-profiles.ps1
 ```
 
 Tambem e possivel ativar/desativar auto-start pelo botao **Configuracoes** no painel.
+
+O Startup correto deve conter `WhatsApp MCP Tray.lnk`. Se encontrar `WhatsApp MCP Painel.lnk` ou `WhatsApp MCP Bridge.vbs`, isso e legado e deve ser removido/desativado depois de confirmar que o Tray atual esta funcionando.
+
+### Se Der Acesso Negado Ao Criar O Auto-start
+
+Alguns antivirus bloqueiam escrita automatica em:
+
+```text
+C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+```
+
+Nesse caso, faca manualmente pelo Explorer:
+
+1. Abra a pasta Startup digitando `shell:startup` no Executar do Windows.
+2. Copie o atalho `WhatsApp MCP Tray.lnk` da Area de Trabalho para essa pasta.
+3. Se existirem `WhatsApp MCP Painel.lnk` ou `WhatsApp MCP Bridge.vbs`, mova para fora da pasta Startup.
+4. Se o antivirus perguntar, libere apenas o arquivo `WhatsApp MCP Tray.lnk`, nao o PowerShell inteiro.
+
+Estado esperado no Startup:
+
+```text
+WhatsApp MCP Tray.lnk
+```
 
 No macOS, o auto-start fica em:
 

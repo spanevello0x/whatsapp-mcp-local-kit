@@ -81,6 +81,12 @@ foreach ($shortcutPath in @(
   }
 }
 
+$legacyStartupVbs = Join-Path $startup "WhatsApp MCP Bridge.vbs"
+if (Test-Path $legacyStartupVbs) {
+  Write-Host "$legacyStartupVbs -> REVISAR" -ForegroundColor Yellow
+  Write-Host "  Auto-start legado detectado. Remova/desative este VBS; o correto e WhatsApp MCP Tray.lnk."
+}
+
 Write-Host "`n-- Config do painel --"
 if (Test-Path $panelConfig) {
   try {

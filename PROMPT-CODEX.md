@@ -21,6 +21,8 @@ Regras obrigatorias:
 - Se existir whatsapp.db ou messages.db, faca backup antes de qualquer reinstalacao.
 - Nao apague bancos .db, logs ou pastas de perfil sem minha confirmacao explicita.
 - Nao crie excecao global para powershell.exe, cmd.exe, wscript.exe, python.exe, bash, go.exe/go ou launchctl.
+- Explique que as excecoes seguras sao pontuais e dependem do usuario/caminho: pasta do repo clonado, pasta WhatsApp MCP Panel e pasta WhatsApp MCP Profiles.
+- Explique que o antivirus normalmente e configurado uma vez; so precisa revisao se mudar caminho, reinstalar, recompilar bridge, bloquear auto-start ou enviar arquivo para quarentena.
 - Para antivirus, diga exatamente quais pastas/arquivos liberar e espere eu confirmar.
 - Se o antivirus colocar arquivo em quarentena, oriente restaurar somente se o caminho estiver dentro das pastas esperadas.
 - Operacoes de envio de mensagem no WhatsApp precisam de confirmacao explicita.
@@ -32,6 +34,12 @@ Passos esperados no Windows:
 2. Confirmar que o repositorio nao contem .db, QR, logs sensiveis ou tokens versionados.
 3. Conferir dependencias.
 4. Orientar excecoes do antivirus antes de compilar/rodar.
+   Excecoes principais:
+   - pasta real do repositorio clonado;
+   - C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Panel;
+   - C:\Users\SEU_USUARIO\Documents\WhatsApp MCP Profiles.
+   Se auto-start for bloqueado, liberar apenas:
+   - C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\WhatsApp MCP Tray.lnk.
 5. Rodar o bootstrap Windows em modo perfis:
    powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1 -ProfilesMode -ConfigureAllMcp
 6. Se faltarem dependencias e eu autorizar, rodar:
