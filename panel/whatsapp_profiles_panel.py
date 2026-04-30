@@ -51,6 +51,7 @@ GRAY = "#334155"
 BUTTON_DISABLED_BG = "#243044"
 BUTTON_DISABLED_FG = "#8b95a6"
 BUTTON_HOVER_TINT = "#ffffff"
+BUTTON_CURSOR = "hand2" if IS_WINDOWS else "pointinghand"
 
 STATUS_COLORS = {
     "running": (22, 163, 74, 255),
@@ -91,7 +92,7 @@ class ActionButton(tk.Label):
             pady=7,
             width=width or 0,
             anchor=tk.CENTER,
-            cursor="pointinghand",
+            cursor=BUTTON_CURSOR,
             relief=tk.FLAT,
             bd=0,
             highlightthickness=1,
@@ -114,7 +115,7 @@ class ActionButton(tk.Label):
         if "state" in kwargs:
             state = kwargs.pop("state")
             self._enabled = state != tk.DISABLED and str(state) != "disabled"
-            kwargs["cursor"] = "pointinghand" if self._enabled else "arrow"
+            kwargs["cursor"] = BUTTON_CURSOR if self._enabled else "arrow"
         if "bg" in kwargs or "background" in kwargs:
             color = kwargs.pop("bg", kwargs.pop("background", self._normal_bg))
             self._normal_bg = color
